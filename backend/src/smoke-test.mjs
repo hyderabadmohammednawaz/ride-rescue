@@ -2,7 +2,10 @@
  * End-to-end regression over the whole API, run against a freshly seeded database.
  * Exits non-zero on the first failure so the result is unambiguous.
  */
-const BASE = 'http://localhost:5000/api';
+// Defaults to the local server; point it at a deployment with:
+//   API_BASE=https://riderescue-api.onrender.com npm test
+const BASE = `${(process.env.API_BASE || 'http://localhost:5000').replace(/\/$/, '')}/api`;
+console.log(`Testing against: ${BASE}`);
 let pass = 0;
 const failures = [];
 
