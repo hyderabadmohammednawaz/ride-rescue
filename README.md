@@ -2,6 +2,12 @@
 
 **Real-Time Location-Based Two-Wheeler Service and Spare Parts Dispatch System**
 
+> **Live API:** https://riderescue-api.onrender.com — [health check](https://riderescue-api.onrender.com/api/health)
+>
+> Hosted on Render's free tier with MongoDB Atlas. The instance sleeps after 15 minutes of
+> inactivity, so the first request after a quiet spell takes ~50 seconds to wake. **Open the health
+> check a minute before demoing.**
+
 A full-stack platform that connects stranded riders with nearby verified mechanics in seconds, tracks
 those mechanics live on a map, and runs an online spare-parts marketplace on top.
 
@@ -632,6 +638,21 @@ it only existed to allow plain HTTP to your laptop.
 **Web** — set `NEXT_PUBLIC_API_URL` to the same URL. The web app deploys fine on Vercel (it is the
 *backend* that cannot be serverless). Afterwards, set `CORS_ORIGIN` on Render to your web app's URL so
 only your own frontend can call the API.
+
+### Deployment gotchas actually hit during this deploy
+
+- **`bad auth : authentication failed`** — the connection string's password was wrong. Worth knowing
+  what this error *rules out*: the build compiled, the container started, and it reached Atlas over
+  the network, so `render.yaml` and the `0.0.0.0/0` rule were already working. Only the credential
+  was wrong. Fix with Atlas → Database Access → Edit → **Autogenerate Secure Password**, which
+  produces an alphanumeric password and sidesteps percent-encoding entirely.
+- **Seeding into the wrong database.** Omit `/ride_rescue` from the connection string and MongoDB
+  writes to a database called `test`. The seed reports success while the deployed API — correctly
+  pointed at `/ride_rescue` — keeps returning empty lists.
+- **cmd.exe vs PowerShell.** The seed command uses PowerShell syntax (`$env:VAR=`). In cmd you need
+  `cd /d` to change drive, `set` instead of `$env:`, and **quotes around `set "VAR=value"`** — the
+  connection string contains `&w=majority`, and an unquoted `&` in cmd means "run the next command",
+  silently truncating the URI.
 
 ### The one thing that will bite you in a viva
 

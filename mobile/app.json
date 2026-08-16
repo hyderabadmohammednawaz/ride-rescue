@@ -49,13 +49,14 @@
         "expo-build-properties",
         {
           "android": {
-            "usesCleartextTraffic": true
+            "_comment": "The API is HTTPS, so cleartext stays off. Set usesCleartextTraffic to true only if you point EXPO_PUBLIC_API_URL back at a plain-HTTP address such as a laptop on the LAN — Android blocks http:// for apps targeting API 28+.",
+            "usesCleartextTraffic": false
           }
         }
       ]
     ],
     "extra": {
-      "apiUrl": "http://192.168.29.33:5000"
+      "apiUrl": "https://riderescue-api.onrender.com"
     }
   }
 }
