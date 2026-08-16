@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!--
+    RideRescue app icon.
+    A map pin (the app is location-first) with a wrench cut out of its head
+    (the thing that arrives). Two shapes only, so it still reads at 48px.
+  -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#1d4ed8"/>
+    </linearGradient>
+
+    <!-- Open-ended wrench: C-shaped head plus a handle. -->
+    <mask id="wrench">
+      <rect x="-260" y="-320" width="520" height="620" fill="black"/>
+      <circle cx="0" cy="-104" r="86" fill="white"/>
+      <rect x="-29" y="-110" width="58" height="232" rx="29" fill="white"/>
+      <circle cx="0" cy="-104" r="44" fill="black"/>
+      <rect x="-35" y="-250" width="70" height="146" fill="black"/>
+    </mask>
+  </defs>
+
+  <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
+
+  <!-- Pin -->
+  <path d="M512 872 C512 872 286 618 286 404 A226 226 0 1 1 738 404 C738 618 512 872 512 872 Z"
+        fill="#ffffff"/>
+
+  <!-- Wrench knocked out of the pin head in the background blue -->
+  <g transform="translate(512 398) rotate(-40) scale(0.92)">
+    <rect x="-260" y="-320" width="520" height="620" fill="#1e4fd8" mask="url(#wrench)"/>
+  </g>
+</svg>

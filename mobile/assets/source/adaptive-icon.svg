@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!--
+    Android adaptive icon FOREGROUND. Transparent background - the launcher
+    composites this over the colour in app.json and crops it to a circle,
+    squircle or squarcle depending on the device.
+
+    Android only guarantees the centre 66% is visible, so the mark is scaled to
+    0.62 and centred to stay inside that safe zone.
+
+    The wrench is a genuine hole punched through the pin, so the launcher's
+    background colour shows through it. Everything is expressed as ONE flat
+    mask - a mask that references another masked element renders blank in
+    librsvg, which is what Expo/sharp use.
+  -->
+  <defs>
+    <mask id="pinWithWrenchHole">
+      <!-- 1. the pin itself is visible -->
+      <path d="M512 872 C512 872 286 618 286 404 A226 226 0 1 1 738 404 C738 618 512 872 512 872 Z"
+            fill="white"/>
+
+      <g transform="translate(512 398) rotate(-40) scale(0.92)">
+        <!-- 2. punch out the wrench head and handle -->
+        <circle cx="0" cy="-104" r="86" fill="black"/>
+        <rect x="-29" y="-110" width="58" height="232" rx="29" fill="black"/>
+        <!-- 3. restore the middle of the head, so the head reads as a ring -->
+        <circle cx="0" cy="-104" r="44" fill="white"/>
+        <!-- 4. restore the jaw opening, making it an open-ended spanner.
+             This rect ADDS white, so it must not reach past the pin outline or
+             it paints material outside the silhouette. The head ring only spans
+             -190..-148, so -196 is enough to cut the jaw open. -->
+        <rect x="-35" y="-196" width="70" height="92" fill="white"/>
+      </g>
+    </mask>
+  </defs>
+
+  <g transform="translate(512 512) scale(0.72) translate(-512 -512)">
+    <rect width="1024" height="1024" fill="#ffffff" mask="url(#pinWithWrenchHole)"/>
+  </g>
+</svg>

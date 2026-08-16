@@ -7,7 +7,9 @@
     "scheme": "riderescue",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "icon": "./assets/icon.png",
     "splash": {
+      "image": "./assets/splash-icon.png",
       "backgroundColor": "#2563eb",
       "resizeMode": "contain"
     },
@@ -25,6 +27,7 @@
     "android": {
       "package": "in.riderescue.app",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#2563eb"
       },
       "permissions": [

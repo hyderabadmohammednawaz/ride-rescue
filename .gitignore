@@ -31,6 +31,9 @@ mobile/ios/
 *.jks
 key.properties
 
+# Throwaway icon previews (regenerate with mobile/assets/source/preview.mjs)
+mobile/assets/source/_preview-*.png
+
 # Editors / OS
 .DS_Store
 Thumbs.db

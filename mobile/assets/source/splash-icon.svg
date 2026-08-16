@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!--
+    Splash mark: the same pin, transparent background, shown on the brand blue.
+    Uses one flat mask for the same reason as adaptive-icon.svg.
+  -->
+  <defs>
+    <mask id="pinWithWrenchHole">
+      <path d="M512 872 C512 872 286 618 286 404 A226 226 0 1 1 738 404 C738 618 512 872 512 872 Z"
+            fill="white"/>
+      <g transform="translate(512 398) rotate(-40) scale(0.92)">
+        <circle cx="0" cy="-104" r="86" fill="black"/>
+        <rect x="-29" y="-110" width="58" height="232" rx="29" fill="black"/>
+        <circle cx="0" cy="-104" r="44" fill="white"/>
+        <!-- Kept inside the pin outline: a white rect here adds material, so an
+             oversized one would protrude past the silhouette. -->
+        <rect x="-35" y="-196" width="70" height="92" fill="white"/>
+      </g>
+    </mask>
+  </defs>
+
+  <g transform="translate(512 512) scale(0.8) translate(-512 -512)">
+    <rect width="1024" height="1024" fill="#ffffff" mask="url(#pinWithWrenchHole)"/>
+  </g>
+</svg>
