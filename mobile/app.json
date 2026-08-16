@@ -26,6 +26,7 @@
     },
     "android": {
       "package": "in.riderescue.app",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#2563eb"
@@ -56,7 +57,9 @@
             "usesCleartextTraffic": false
           }
         }
-      ]
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth"
     ],
     "extra": {
       "apiUrl": "https://riderescue-api.onrender.com"

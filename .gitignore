@@ -26,6 +26,16 @@ mobile/expo-env.d.ts
 mobile/android/
 mobile/ios/
 
+# Firebase client config. It ships inside the APK so it is not strictly secret,
+# but it is tied to one Firebase project — each developer supplies their own.
+# See README for how to regenerate it.
+mobile/google-services.json
+mobile/GoogleService-Info.plist
+
+# Firebase service-account key — this one IS a secret, never commit it.
+**/serviceAccountKey.json
+**/firebase-adminsdk*.json
+
 # Signing material, if you ever add a real release keystore
 *.keystore
 *.jks

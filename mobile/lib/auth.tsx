@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, clearToken, getToken, setToken } from './api';
+import { signOutFirebase } from './phoneAuth';
 
 export interface Vehicle {
   _id: string;
@@ -35,6 +36,8 @@ interface AuthValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
+  /** Completes a session from a token issued by any of the auth routes. */
+  adoptSession: (token: string, user: User) => Promise<User>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
   setUser: (u: User | null) => void;
@@ -79,12 +82,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return res.user;
   };
 
+  const adoptSession = async (token: string, nextUser: User) => {
+    await setToken(token);
+    setUser(nextUser);
+    return nextUser;
+  };
+
   const logout = async () => {
     await clearToken();
     setUser(null);
+    // Drop the Firebase session too, so the next phone sign-in starts clean.
+    await signOutFirebase();
   };
 
-  return <AuthContext.Provider value={{ user, loading, login, logout, refresh, setUser }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, loading, login, adoptSession, logout, refresh, setUser }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export const useAuth = () => useContext(AuthContext);

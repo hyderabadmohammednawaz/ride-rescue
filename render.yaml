@@ -44,6 +44,12 @@ services:
       - key: CORS_ORIGIN
         sync: false
 
+      # Firebase service-account JSON (raw or base64) for verifying the ID
+      # tokens produced by phone OTP sign-in. Set it in the dashboard - it is a
+      # private key. Leave it unset and phone sign-in is hidden in the apps.
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+
       # The embedded MongoDB is never used in production; skip its binary
       # download during install.
       - key: MONGOMS_DISABLE_POSTINSTALL

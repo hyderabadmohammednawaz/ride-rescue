@@ -60,6 +60,12 @@ const userSchema = new mongoose.Schema(
     },
     avatarColor: { type: String, default: '#2563eb' },
     isVerified: { type: Boolean, default: false },
+    // Last 10 digits of the phone, so +919000000010 and 9000000010 match.
+    // Sparse because accounts created by email OTP never set it.
+    phoneKey: { type: String, index: { unique: true, sparse: true } },
+    phoneVerified: { type: Boolean, default: false },
+    // Links to the Firebase Phone Auth identity that proved the number.
+    firebaseUid: { type: String, index: { unique: true, sparse: true } },
     isBlocked: { type: Boolean, default: false },
     preferredLanguage: { type: String, default: 'en' },
     emergencyContact: {
