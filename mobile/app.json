@@ -1,0 +1,61 @@
+{
+  "expo": {
+    "name": "RideRescue",
+    "slug": "ride-rescue",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "riderescue",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#2563eb",
+      "resizeMode": "contain"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "in.riderescue.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "RideRescue shares your location so a mechanic can reach you when your bike breaks down.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "RideRescue shares your live location with the customer while you are riding to a job."
+      }
+    },
+    "android": {
+      "package": "in.riderescue.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#2563eb"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "RideRescue shares your location so a mechanic can reach you when your bike breaks down."
+        }
+      ],
+      "expo-asset",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "apiUrl": "http://192.168.29.33:5000"
+    }
+  }
+}

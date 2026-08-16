@@ -1,0 +1,50 @@
+# Render blueprint for the RideRescue backend.
+#
+# Render reads this file when you create a Blueprint from the repository, so the
+# service is configured without clicking through the dashboard.
+#
+# Two values are deliberately NOT in this file because they are secrets:
+#   MONGODB_URI  - your MongoDB Atlas connection string (contains a password)
+#   JWT_SECRET   - generated for you by Render on first deploy
+# Set MONGODB_URI yourself in the Render dashboard under Environment.
+
+services:
+  - type: web
+    name: riderescue-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    # Render restarts the instance if this stops returning 200.
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # Render generates a strong random value on the first deploy. The server
+      # refuses to start in production with the development default.
+      - key: JWT_SECRET
+        generateValue: true
+
+      # Set this in the dashboard - it contains your Atlas password, so it must
+      # not live in the repository. Without it the server refuses to start,
+      # because the embedded MongoDB writes to a disk Render wipes on restart.
+      - key: MONGODB_URI
+        sync: false
+
+      # OTPs are returned in API responses and payments are mocked when this is
+      # on. Keep it false on a public URL unless you are mid-demo and understand
+      # that anyone can then register with OTP 123456.
+      - key: DEV_MODE
+        value: 'false'
+
+      # Lock the API to your deployed frontend once you have its URL, e.g.
+      # https://riderescue.vercel.app - leave unset and any site may call it.
+      - key: CORS_ORIGIN
+        sync: false
+
+      # The embedded MongoDB is never used in production; skip its binary
+      # download during install.
+      - key: MONGOMS_DISABLE_POSTINSTALL
+        value: '1'
