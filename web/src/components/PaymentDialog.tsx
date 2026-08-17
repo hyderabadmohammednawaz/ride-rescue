@@ -55,7 +55,9 @@ export function PaymentDialog({
         checkout: CheckoutOptions;
       }>('/payments/create', {
         method: 'POST',
-        body: { purpose, bookingId, orderId, method },
+        // This build can open Razorpay checkout and return a signature, so it
+        // opts in to the real gateway.
+        body: { purpose, bookingId, orderId, method, supportsCheckout: true },
       });
 
       // With keys configured the customer pays in Razorpay's own sheet and we

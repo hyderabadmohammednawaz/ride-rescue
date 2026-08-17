@@ -775,6 +775,13 @@ checkout dialog switches from settling instantly to opening the real Razorpay sh
 Without keys the same sequence runs against a mock gateway that settles instantly, so the demo
 works offline and the 59-check regression needs no network.
 
+**Clients opt in.** A payment only goes to Razorpay if the caller sent `supportsCheckout: true`.
+The mobile app — and any web build predating checkout — calls create and then confirms with an empty
+body; routed to the gateway it would create a real order, return no signature, and have the payment
+marked failed. Opting in means **adding keys can never break a client that has not shipped yet**, so
+the rollout does not depend on deploy order. The mobile app therefore stays on the mock gateway until
+it gains a real checkout, which on React Native needs Razorpay's native SDK and a rebuild.
+
 ---
 
 ## Troubleshooting

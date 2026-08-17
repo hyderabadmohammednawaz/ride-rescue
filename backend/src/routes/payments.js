@@ -23,7 +23,7 @@ router.post(
   '/create',
   requireRole('customer'),
   asyncRoute(async (req, res) => {
-    const { purpose, bookingId, orderId, method = 'upi' } = req.body;
+    const { purpose, bookingId, orderId, method = 'upi', supportsCheckout = false } = req.body;
     if (!['booking', 'order', 'wallet_topup'].includes(purpose)) throw badRequest('Unknown payment purpose');
     if (!['upi', 'card', 'wallet', 'cash'].includes(method)) throw badRequest('Unknown payment method');
 
@@ -61,9 +61,20 @@ router.post(
       purpose,
       booking: booking?._id,
       order: order?._id,
-      // Wallet and cash never reach a gateway: the wallet is our own ledger and
-      // cash is settled in person, so both stay on the internal path.
-      gateway: gatewayLive() && !['wallet', 'cash'].includes(method) ? 'razorpay' : 'mock',
+      // Three things must hold before a payment goes to the gateway:
+      //
+      //   - keys are configured;
+      //   - the method actually involves one (the wallet is our own ledger and
+      //     cash settles in person, so neither does);
+      //   - and the caller can complete a checkout and return a signature.
+      //
+      // That last one keeps older clients working. The mobile app and any web
+      // build predating checkout call create then confirm with an empty body;
+      // routed to Razorpay they would create a real order, send no signature,
+      // and have the payment marked failed. Clients opt in instead, so adding
+      // keys can never break a client that has not shipped yet.
+      gateway:
+        gatewayLive() && supportsCheckout && !['wallet', 'cash'].includes(method) ? 'razorpay' : 'mock',
       status: 'pending',
     });
 
