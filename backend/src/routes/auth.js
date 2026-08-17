@@ -5,7 +5,12 @@ import { env } from '../config/env.js';
 import { asyncRoute, badRequest, notFound } from '../middleware/errors.js';
 import { requireAuth, signToken } from '../middleware/auth.js';
 import { numericCode, referralCode } from '../utils/ids.js';
-import { normalisePhone, phoneAuthConfigured, verifyPhoneToken } from '../services/firebaseAdmin.js';
+import {
+  normalisePhone,
+  phoneAuthConfigured,
+  phoneAuthProject,
+  verifyPhoneToken,
+} from '../services/firebaseAdmin.js';
 
 const router = express.Router();
 
@@ -204,7 +209,13 @@ router.post(
 
 // GET /api/auth/config — lets the apps show or hide the phone sign-in option
 router.get('/config', (req, res) => {
-  res.json({ phoneAuth: phoneAuthConfigured(), devMode: env.devMode });
+  res.json({
+    phoneAuth: phoneAuthConfigured(),
+    // Must match the project in the app's google-services.json, or every token
+    // is rejected for the wrong audience.
+    firebaseProject: phoneAuthProject(),
+    devMode: env.devMode,
+  });
 });
 
 /**

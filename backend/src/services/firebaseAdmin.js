@@ -13,6 +13,7 @@ import { getAuth } from 'firebase-admin/auth';
  * raw or base64-encoded (base64 avoids newline mangling in dashboards like Render).
  */
 let initError = null;
+let projectId = null;
 
 function loadServiceAccount() {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
@@ -32,7 +33,8 @@ function init() {
     const serviceAccount = loadServiceAccount();
     if (!serviceAccount) return false;
     initializeApp({ credential: cert(serviceAccount) });
-    console.log(`[firebase] phone auth ready (project ${serviceAccount.project_id})`);
+    projectId = serviceAccount.project_id;
+    console.log(`[firebase] phone auth ready (project ${projectId})`);
     return true;
   } catch (err) {
     initError = err.message;
@@ -45,6 +47,14 @@ const ready = init();
 
 export const phoneAuthConfigured = () => ready;
 export const phoneAuthError = () => initError;
+
+/**
+ * The Firebase project this server verifies tokens against. Not a secret — it
+ * also ships inside the app's google-services.json — and exposing it turns an
+ * otherwise invisible mismatch (app minting tokens for project A, server
+ * verifying against project B) into something you can see at a glance.
+ */
+export const phoneAuthProject = () => projectId;
 
 /**
  * Returns the E.164 phone number proven by the token, or throws.

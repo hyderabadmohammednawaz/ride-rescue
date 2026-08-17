@@ -32,9 +32,13 @@ mobile/ios/
 mobile/google-services.json
 mobile/GoogleService-Info.plist
 
-# Firebase service-account key — this one IS a secret, never commit it.
+# Firebase service-account keys — these ARE secrets, never commit them.
+# Firebase names the download <project>-firebase-adminsdk-<hash>.json, so the
+# wildcard has to be on BOTH sides: a leading-anchor pattern would miss it.
 **/serviceAccountKey.json
-**/firebase-adminsdk*.json
+**/*firebase-adminsdk*.json
+**/*service_account*.json
+**/*service-account*.json
 
 # Signing material, if you ever add a real release keystore
 *.keystore
