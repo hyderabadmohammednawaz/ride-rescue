@@ -50,6 +50,22 @@ services:
       - key: FIREBASE_SERVICE_ACCOUNT
         sync: false
 
+      # Razorpay. Test-mode keys (rzp_test_...) are free and need no KYC, and no
+      # code differs between test and live - only these two values.
+      #
+      # They must be declared here even though the values live in the dashboard:
+      # this service is Blueprint managed, so Render syncs its environment to the
+      # set named in this file. A variable added only in the dashboard shows up
+      # there but never reaches the process, which looks exactly like a key that
+      # silently does not work. `sync: false` means "declared here, value set in
+      # the dashboard" - the same pattern as MONGODB_URI above.
+      #
+      # Unset, payments fall back to the mock gateway.
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+
       # The embedded MongoDB is never used in production; skip its binary
       # download during install.
       - key: MONGOMS_DISABLE_POSTINSTALL
