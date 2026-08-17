@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { AuthCard, FormError } from '@/components/AuthCard';
 import { api } from '@/lib/api';
@@ -16,12 +17,23 @@ function VerifyOtpInner() {
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [seconds, setSeconds] = useState(30);
+  const [devMode, setDevMode] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (seconds <= 0) return;
     const id = setTimeout(() => setSeconds((s) => s - 1), 1000);
     return () => clearTimeout(id);
   }, [seconds]);
+
+  // This screen only exists for accounts created by the older email-OTP signup.
+  // Whether a code is actually obtainable depends on the server's DEV_MODE, so
+  // ask rather than assert — the banner used to promise "123456" unconditionally,
+  // which is a lie against a production backend that mails nothing.
+  useEffect(() => {
+    api<{ devMode: boolean }>('/auth/config', { auth: false })
+      .then((c) => setDevMode(c.devMode))
+      .catch(() => setDevMode(null));
+  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,10 +74,23 @@ function VerifyOtpInner() {
         </div>
       )}
 
-      <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
-        <strong>Development mode:</strong> no SMS gateway is connected, so the OTP is always{' '}
-        <code className="font-mono font-bold">123456</code> and is printed in the backend console.
-      </div>
+      {devMode === true && (
+        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          <strong>Development mode:</strong> no SMS gateway is connected, so the OTP is always{' '}
+          <code className="font-mono font-bold">123456</code> and is printed in the backend console.
+        </div>
+      )}
+
+      {devMode === false && (
+        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          <strong>This is the old email sign-up.</strong> No mail provider is configured on the live
+          server, so no code can reach you here.{' '}
+          <Link href="/register" className="font-semibold underline">
+            Sign up with your mobile number
+          </Link>{' '}
+          instead — that sends a real OTP by SMS.
+        </div>
+      )}
 
       <form onSubmit={submit} className="space-y-4">
         <div>

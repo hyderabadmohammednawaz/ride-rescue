@@ -458,8 +458,12 @@ All routes are prefixed `/api`. Authenticated routes need `Authorization: Bearer
 - **Role-based access control** — `requireRole('customer')`, `requireRole('vendor', 'admin')` etc.
   guard every route. Ownership is checked separately: you cannot read, pay for or chat about a
   booking that is not yours, even with a valid token for the right role.
-- **OTP verification** — accounts must verify before login; OTP records carry a TTL index so expired
-  codes are deleted by MongoDB itself.
+- **Phone verification via Firebase** — signup on both web and mobile proves ownership of the number
+  before an account exists. The client never tells us "I am 98765…": Firebase sends the SMS, checks
+  the code, and returns a signed ID token, and `verifyPhoneToken()` validates that signature with the
+  service-account key before the user row is written. A forged token fails the signature check.
+- **OTP verification (legacy email path)** — accounts created by the older email signup must verify
+  before login; OTP records carry a TTL index so expired codes are deleted by MongoDB itself.
 - **Service-start OTP** — a 4-digit code the customer reads out, required before a mechanic can move a
   job to `in_progress`. Prevents billing for work that never happened.
 - **Payment signature verification** — with live keys, Razorpay's HMAC-SHA256 signature is verified
@@ -648,6 +652,39 @@ The web app deploys fine on Vercel — it is the *backend* that cannot be server
 4. Deploy, then set `CORS_ORIGIN` on Render to the resulting URL so only your own frontend can call
    the API.
 
+### Step 7 — Phone sign-in on the web
+
+Web and mobile share one authentication path. Both use Firebase Phone Auth, both send the resulting
+ID token to `POST /auth/phone/register` (or `/auth/phone/login`), and the backend verifies the
+token's signature before writing anything — so a signup made on the phone can log in on the web, and
+vice versa.
+
+Setting it up for a new deployment takes two console steps:
+
+1. **Firebase → Project settings → Your apps → Add app → Web.** Copy the config into
+   `web/src/lib/firebase.ts` (or set the `NEXT_PUBLIC_FIREBASE_*` env vars, which take precedence).
+2. **Firebase → Authentication → Settings → Authorized domains → Add domain.** Add the Vercel URL.
+   `localhost` is authorised by default, so this only bites after deploying.
+
+Two things differ from the mobile flow and are worth understanding:
+
+- **The browser needs a reCAPTCHA verifier**; native does not. A web page has no app-signature
+  equivalent to prove it is not a bot, so Firebase refuses to send a browser-initiated SMS without
+  one. It is invisible unless Google thinks the visitor looks automated. The verifier is **single-use** —
+  reusing one is the usual cause of a resend failing with `captcha-check-failed`, so `sendOtp()`
+  builds a fresh verifier each time and disposes of the previous one.
+- **The OTP step is on the same page as the form**, not a route of its own. Firebase's confirmation
+  handle is a live object that cannot be serialised into a URL or storage, and handing it across a
+  navigation is exactly what broke resend in the mobile app.
+
+The web config values (`apiKey`, `appId`, …) are committed deliberately. They are not secrets — every
+Firebase web app ships them in its JavaScript bundle by design. What protects the project is the
+authorised-domain list, the SMS region policy, and server-side token verification. The
+**service-account key is the real secret** and lives only in Render's `FIREBASE_SERVICE_ACCOUNT`.
+
+Signup also asks the backend `POST /auth/email-available` before sending anything, so a duplicate
+email is caught without spending an SMS on a registration that would be rejected anyway.
+
 ### Deployment gotchas actually hit during this deploy
 
 - **The deployed site kept calling `http://localhost:5000`.** `NEXT_PUBLIC_*` values are *inlined into
@@ -698,7 +735,7 @@ Everything below is wired up and needs only credentials.
 
 | Feature | What to do |
 |---|---|
-| **Real SMS OTP** | Set `DEV_MODE=false` and plug Twilio/MSG91 into `issueOtp()` in `routes/auth.js`. That one function is the only place OTPs are delivered. |
+| **Real SMS OTP** | **Already live** on web and mobile via Firebase Phone Auth — see below. The legacy email-OTP path (`issueOtp()` in `routes/auth.js`) is the one place a Twilio/MSG91 integration would go if you ever wanted email or a second channel. |
 | **Razorpay payments** | Put `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` in `backend/.env`. The signature verification path in `routes/payments.js` is already written. |
 | **Push notifications** | `services/notifications.js` persists and emits every notification. Add an FCM `send()` call in `notify()` and every existing notification becomes a push. |
 | **Google Maps** | Swap the Leaflet `TileLayer` URL for the Google tile source, or replace `LiveMap.tsx` with `@react-google-maps/api`. All coordinates are already GeoJSON `[lng, lat]`. |
