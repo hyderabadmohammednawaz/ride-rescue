@@ -1,6 +1,7 @@
 import {
   getAuth,
   getIdToken,
+  onAuthStateChanged,
   signInWithPhoneNumber,
   signOut,
 } from '@react-native-firebase/auth';
@@ -57,13 +58,57 @@ export function resendOtp(phone: string): Promise<Confirmation> {
   return signInWithPhoneNumber(getAuth(), toE164(phone));
 }
 
+/** Last 10 digits, so +919000000010 and 9000000010 compare equal. */
+const digits10 = (v: string) => String(v || '').replace(/\D/g, '').slice(-10);
+
+/**
+ * If Firebase already signed this number in by itself, returns its ID token.
+ *
+ * On Android, Play Integrity can verify instantly and Google Play services can
+ * auto-retrieve the SMS — either path completes sign-in without us calling
+ * confirm(). The verification session is then spent, so a later confirm() fails
+ * with "session expired" even though the user did nothing wrong. Checking for an
+ * already-signed-in user first is what stops that misleading error.
+ */
+export async function tokenIfAlreadyVerified(phone: string): Promise<string | null> {
+  const user = getAuth().currentUser;
+  if (!user?.phoneNumber) return null;
+  if (digits10(user.phoneNumber) !== digits10(phone)) return null;
+  return getIdToken(user, true).catch(() => null);
+}
+
+/** Fires when Firebase completes verification on its own. */
+export function onAutoVerified(phone: string, handler: (idToken: string) => void) {
+  return onAuthStateChanged(getAuth(), async (user) => {
+    if (!user?.phoneNumber) return;
+    if (digits10(user.phoneNumber) !== digits10(phone)) return;
+    const token = await getIdToken(user, true).catch(() => null);
+    if (token) handler(token);
+  });
+}
+
 /** Checks the code and returns the Firebase ID token for our backend. */
-export async function confirmOtp(confirmation: Confirmation, code: string): Promise<string> {
-  const credential = await confirmation.confirm(code);
-  if (!credential?.user) throw new Error('Could not complete verification. Please try again.');
-  const token = await getIdToken(credential.user);
-  if (!token) throw new Error('Could not complete verification. Please try again.');
-  return token;
+export async function confirmOtp(
+  confirmation: Confirmation,
+  code: string,
+  phone?: string
+): Promise<string> {
+  try {
+    const credential = await confirmation.confirm(code);
+    if (!credential?.user) throw new Error('Could not complete verification. Please try again.');
+    const token = await getIdToken(credential.user);
+    if (!token) throw new Error('Could not complete verification. Please try again.');
+    return token;
+  } catch (err: any) {
+    // The session may have been consumed by auto-verification rather than
+    // actually expiring. If Firebase already has this number signed in, that is
+    // a success, not a failure.
+    if (phone) {
+      const existing = await tokenIfAlreadyVerified(phone);
+      if (existing) return existing;
+    }
+    throw err;
+  }
 }
 
 /** Signs out of Firebase; our own session is separate and cleared by useAuth. */
