@@ -2,11 +2,12 @@
 
 **Real-Time Location-Based Two-Wheeler Service and Spare Parts Dispatch System**
 
+> **Live web app:** https://ride-rescue-57l9.vercel.app
 > **Live API:** https://riderescue-api.onrender.com — [health check](https://riderescue-api.onrender.com/api/health)
 >
-> Hosted on Render's free tier with MongoDB Atlas. The instance sleeps after 15 minutes of
-> inactivity, so the first request after a quiet spell takes ~50 seconds to wake. **Open the health
-> check a minute before demoing.**
+> The web app is on Vercel; the API is on Render's free tier with MongoDB Atlas. The API sleeps after
+> 15 minutes of inactivity, so the first request after a quiet spell takes ~50 seconds to wake.
+> **Open the health check a minute before demoing** — otherwise the first login looks broken.
 
 A full-stack platform that connects stranded riders with nearby verified mechanics in seconds, tracks
 those mechanics live on a map, and runs an online spare-parts marketplace on top.
@@ -635,11 +636,36 @@ E:\claude\rr.bat install
 Since the URL is now HTTPS, you can also delete the `usesCleartextTraffic` block from `app.json` —
 it only existed to allow plain HTTP to your laptop.
 
-**Web** — set `NEXT_PUBLIC_API_URL` to the same URL. The web app deploys fine on Vercel (it is the
-*backend* that cannot be serverless). Afterwards, set `CORS_ORIGIN` on Render to your web app's URL so
-only your own frontend can call the API.
+### Step 6 — Deploy the web app on Vercel
+
+The web app deploys fine on Vercel — it is the *backend* that cannot be serverless.
+
+1. Import the same GitHub repo at [vercel.com/new](https://vercel.com/new).
+2. Set **Root Directory** to `web`. The repo is a monorepo, and without this Vercel builds the
+   repository root and finds no Next.js app.
+3. Add environment variable `NEXT_PUBLIC_API_URL` = `https://riderescue-api.onrender.com`, and leave
+   **Sensitive** switched off (see below).
+4. Deploy, then set `CORS_ORIGIN` on Render to the resulting URL so only your own frontend can call
+   the API.
 
 ### Deployment gotchas actually hit during this deploy
+
+- **The deployed site kept calling `http://localhost:5000`.** `NEXT_PUBLIC_*` values are *inlined into
+  the client bundle at build time*, and the variable had been saved as **Sensitive** — a flag that
+  tells Vercel to withhold the value from anything the browser can read, which is precisely what
+  inlining is. The build read the fallback instead and shipped a site that 503s on login. Sensitive is
+  correct for a database URL and wrong for anything named `NEXT_PUBLIC_`. The tell is that
+  **Copy to Clipboard** is greyed out on the variable: write-only in the dashboard means write-only in
+  the bundle too. Fix by deleting and re-adding it with Sensitive off — the flag cannot be edited.
+- **"GitHub could not associate the committer with a GitHub user."** Commits were authored as
+  `nawaz@local`, which matches no GitHub account, and Vercel's Hobby plan only builds commits from
+  recognised team members. The fix is to commit under an address GitHub knows — the
+  `ID+username@users.noreply.github.com` form always works and does not publish a real address:
+  ```bash
+  git config user.email "255927115+hyderabadmohammednawaz@users.noreply.github.com"
+  ```
+  A missing environment variable and an unrecognised committer produce the same symptom (a deployment
+  that does not update), so check the build log's commit author before blaming config.
 
 - **`bad auth : authentication failed`** — the connection string's password was wrong. Worth knowing
   what this error *rules out*: the build compiled, the container started, and it reached Atlas over
