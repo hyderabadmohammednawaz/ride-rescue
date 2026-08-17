@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, rupees } from '@/lib/api';
+import { openCheckout, type CheckoutOptions } from '@/lib/razorpay';
 import { useToast } from './Toast';
 
 const METHODS = [
@@ -35,26 +36,50 @@ export function PaymentDialog({
 }) {
   const [method, setMethod] = useState('upi');
   const [busy, setBusy] = useState(false);
+  const [gateway, setGateway] = useState<'razorpay' | 'mock' | null>(null);
   const { push } = useToast();
+
+  // Ask the server which gateway is actually configured rather than assuming.
+  useEffect(() => {
+    api<{ paymentGateway: 'razorpay' | 'mock' }>('/auth/config', { auth: false })
+      .then((c) => setGateway(c.paymentGateway))
+      .catch(() => setGateway(null));
+  }, []);
 
   const pay = async () => {
     setBusy(true);
     try {
-      const created = await api<{ payment: { _id: string }; gateway: string }>('/payments/create', {
+      const created = await api<{
+        payment: { _id: string };
+        gateway: string;
+        checkout: CheckoutOptions;
+      }>('/payments/create', {
         method: 'POST',
         body: { purpose, bookingId, orderId, method },
       });
 
-      // Where a live Razorpay checkout would open. The mock gateway settles instantly.
+      // With keys configured the customer pays in Razorpay's own sheet and we
+      // get back a signature; the mock gateway settles instantly instead.
+      let confirmBody: object = {};
+      if (created.gateway === 'razorpay') {
+        confirmBody = await openCheckout(created.checkout);
+      }
+
       const confirmed = await api<{ message: string }>(`/payments/${created.payment._id}/confirm`, {
         method: 'POST',
-        body: {},
+        body: confirmBody,
       });
 
       push(confirmed.message || 'Payment successful', 'success');
       onPaid();
       onClose();
     } catch (err: any) {
+      // Closing the sheet is not an error - the payment stays pending and the
+      // customer can try again.
+      if (err.message === 'CHECKOUT_DISMISSED') {
+        push('Payment cancelled', 'info');
+        return;
+      }
       push(err.message, 'error');
     } finally {
       setBusy(false);
@@ -101,10 +126,20 @@ export function PaymentDialog({
           })}
         </div>
 
-        <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
-          Development mode: no Razorpay keys are configured, so this settles against a mock gateway. Add
-          RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to the backend .env to switch to real test payments.
-        </p>
+        {gateway === 'mock' && (
+          <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+            No Razorpay keys are configured, so this settles against a mock gateway. Add RAZORPAY_KEY_ID
+            and RAZORPAY_KEY_SECRET on the server to switch to real test payments.
+          </p>
+        )}
+
+        {gateway === 'razorpay' && !['wallet', 'cash'].includes(method) && (
+          <p className="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300">
+            Razorpay <strong>test mode</strong> — no real money moves. Use card{' '}
+            <code className="font-mono font-semibold">4111 1111 1111 1111</code> with any future expiry
+            and any CVV, or UPI id <code className="font-mono font-semibold">success@razorpay</code>.
+          </p>
+        )}
 
         <button onClick={pay} disabled={busy} className="btn-primary mt-4 w-full py-3">
           {busy ? 'Processing…' : `Pay ${rupees(amount)}`}

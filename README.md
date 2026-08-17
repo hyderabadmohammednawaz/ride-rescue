@@ -736,11 +736,44 @@ Everything below is wired up and needs only credentials.
 | Feature | What to do |
 |---|---|
 | **Real SMS OTP** | **Already live** on web and mobile via Firebase Phone Auth — see below. The legacy email-OTP path (`issueOtp()` in `routes/auth.js`) is the one place a Twilio/MSG91 integration would go if you ever wanted email or a second channel. |
-| **Razorpay payments** | Put `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` in `backend/.env`. The signature verification path in `routes/payments.js` is already written. |
+| **Razorpay payments** | **Fully implemented** — set `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` and real checkout takes over. See "Payments" below. Live keys need only the same two variables; no code differs between test and live. |
 | **Push notifications** | `services/notifications.js` persists and emits every notification. Add an FCM `send()` call in `notify()` and every existing notification becomes a push. |
 | **Google Maps** | Swap the Leaflet `TileLayer` URL for the Google tile source, or replace `LiveMap.tsx` with `@react-google-maps/api`. All coordinates are already GeoJSON `[lng, lat]`. |
 | **Real MongoDB** | Set `MONGODB_URI` to your Atlas connection string. The embedded server is skipped automatically. |
 | **HTTPS** | Deploy behind nginx or a platform that terminates TLS. |
+
+### Payments — Razorpay test mode
+
+Test mode is free, unlimited, and needs **no KYC**; only going live requires business
+verification. Nothing about the code changes between the two — only the keys.
+
+1. Sign up at [dashboard.razorpay.com](https://dashboard.razorpay.com), stay in **Test Mode**.
+2. **Settings → API Keys → Generate Test Key.** You get `rzp_test_…` and a secret.
+3. Set `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` on the server and restart.
+
+`GET /api/auth/config` then reports `paymentGateway: "razorpay"` instead of `"mock"`, and the
+checkout dialog switches from settling instantly to opening the real Razorpay sheet.
+
+**Test credentials:** card `4111 1111 1111 1111`, any future expiry, any CVV — or UPI id
+`success@razorpay`. Use `failure@razorpay` to exercise the declined path.
+
+**How the flow works, and why:**
+
+- `POST /payments/create` creates a Razorpay **order** server-side and stores its id on the
+  Payment. Checkout cannot open without one, and it is what ties the payment to an amount *we*
+  chose rather than one the browser claimed.
+- The browser opens Razorpay's sheet. Card details are entered in **their** iframe and never touch
+  our page or our server — which is why `checkout.js` is loaded from their CDN rather than bundled,
+  and is the only third-party script the app loads.
+- `POST /payments/:id/confirm` recomputes the HMAC-SHA256 of `order_id|payment_id` with the secret
+  and compares it, in constant time, against the signature checkout returned. **The order id comes
+  from our stored record, never from the request body** — a signature only proves that *some* order
+  was paid, so trusting a client-supplied order id would let another order's signature be replayed
+  against this payment. A mismatch marks the payment failed.
+- Wallet and cash never reach the gateway: the wallet is our own ledger and cash settles in person.
+
+Without keys the same sequence runs against a mock gateway that settles instantly, so the demo
+works offline and the 59-check regression needs no network.
 
 ---
 

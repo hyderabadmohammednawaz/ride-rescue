@@ -11,6 +11,7 @@ import {
   phoneAuthProject,
   verifyPhoneToken,
 } from '../services/firebaseAdmin.js';
+import { gatewayLive } from '../services/razorpay.js';
 
 const router = express.Router();
 
@@ -215,6 +216,9 @@ router.get('/config', (req, res) => {
     // is rejected for the wrong audience.
     firebaseProject: phoneAuthProject(),
     devMode: env.devMode,
+    // 'razorpay' once keys are set, 'mock' otherwise. Lets the checkout screen
+    // describe what will actually happen instead of assuming.
+    paymentGateway: gatewayLive() ? 'razorpay' : 'mock',
   });
 });
 

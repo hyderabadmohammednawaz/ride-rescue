@@ -12,6 +12,9 @@ const paymentSchema = new mongoose.Schema(
     order: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
     // Populated by Razorpay when live keys are configured; synthetic otherwise.
     gateway: { type: String, default: 'mock' },
+    // The order id we created server-side. Signature verification must run
+    // against this, never against an order id the client hands back.
+    gatewayOrderId: String,
     gatewayPaymentId: String,
     paidAt: Date,
   },

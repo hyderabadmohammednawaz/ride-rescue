@@ -1,5 +1,4 @@
 import express from 'express';
-import crypto from 'node:crypto';
 import { Payment } from '../models/Payment.js';
 import { Booking } from '../models/Booking.js';
 import { Order } from '../models/Order.js';
@@ -10,11 +9,10 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { paymentReference } from '../utils/ids.js';
 import { notify } from '../services/notifications.js';
 import { emitToUser } from '../realtime/hub.js';
+import { createOrder, gatewayLive, verifySignature } from '../services/razorpay.js';
 
 const router = express.Router();
 router.use(requireAuth);
-
-const gatewayLive = () => Boolean(env.razorpayKeyId && env.razorpayKeySecret);
 
 /**
  * Creates a payment order. With Razorpay keys configured this is where the
@@ -63,19 +61,40 @@ router.post(
       purpose,
       booking: booking?._id,
       order: order?._id,
-      gateway: gatewayLive() ? 'razorpay' : 'mock',
+      // Wallet and cash never reach a gateway: the wallet is our own ledger and
+      // cash is settled in person, so both stay on the internal path.
+      gateway: gatewayLive() && !['wallet', 'cash'].includes(method) ? 'razorpay' : 'mock',
       status: 'pending',
     });
+
+    // Checkout cannot open without an order created on our side, so this is
+    // what makes the live path work at all.
+    if (payment.gateway === 'razorpay') {
+      try {
+        const rzpOrder = await createOrder({
+          amountRupees: amount,
+          receipt: payment.reference,
+          notes: { purpose, reference: booking?.reference || order?.reference || payment.reference },
+        });
+        payment.gatewayOrderId = rzpOrder.id;
+        await payment.save();
+      } catch (err) {
+        payment.status = 'failed';
+        await payment.save();
+        throw badRequest(`Could not reach the payment gateway: ${err?.error?.description || err.message}`);
+      }
+    }
 
     res.status(201).json({
       payment,
       gateway: payment.gateway,
-      // The frontend passes these to the Razorpay checkout widget when live.
+      // Passed straight to the Razorpay checkout widget when live. The key id is
+      // public by design - it identifies the merchant; only the secret signs.
       checkout: {
         key: env.razorpayKeyId || 'rzp_test_mock',
         amountPaise: Math.round(amount * 100),
         currency: 'INR',
-        orderId: gatewayLive() ? null : `order_mock_${payment.reference}`,
+        orderId: payment.gatewayOrderId || `order_mock_${payment.reference}`,
         name: 'RideRescue',
         description: purpose === 'booking' ? `Service ${booking?.reference}` : purpose === 'order' ? `Order ${order?.reference}` : 'Wallet top-up',
         prefill: { name: req.user.name, email: req.user.email, contact: req.user.phone },
@@ -95,13 +114,17 @@ router.post(
     if (payment.status === 'success') return res.json({ payment, message: 'Already paid' });
 
     // With live keys, verify Razorpay's HMAC signature before trusting the client.
+    // The order id comes from our own record, not from the request body: a
+    // signature is only proof that *some* order was paid, so checking it against
+    // an id the client supplies would let another order's signature be replayed.
     if (payment.gateway === 'razorpay') {
-      const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
-      const expected = crypto
-        .createHmac('sha256', env.razorpayKeySecret)
-        .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-        .digest('hex');
-      if (expected !== razorpaySignature) {
+      const { razorpayPaymentId, razorpaySignature } = req.body;
+      const ok = verifySignature({
+        orderId: payment.gatewayOrderId,
+        paymentId: razorpayPaymentId,
+        signature: razorpaySignature,
+      });
+      if (!ok) {
         payment.status = 'failed';
         await payment.save();
         throw badRequest('Payment signature verification failed');
