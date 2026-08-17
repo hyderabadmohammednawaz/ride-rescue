@@ -6,6 +6,9 @@ import { Payment } from '../models/Payment.js';
 import { SparePart } from '../models/SparePart.js';
 import { Complaint } from '../models/Complaint.js';
 import { Coupon } from '../models/Coupon.js';
+import { Message } from '../models/Message.js';
+import { Review } from '../models/Review.js';
+import { Notification } from '../models/Notification.js';
 import { asyncRoute, badRequest, notFound } from '../middleware/errors.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { rankMechanics } from '../services/ai/mechanicMatch.js';
@@ -131,6 +134,77 @@ router.patch(
 
     await user.save();
     res.json({ user: user.toSafeJSON() });
+  })
+);
+
+/**
+ * DELETE /api/admin/users/:id
+ *
+ * Removes an account and everything that points at it. A plain delete would be
+ * worse than useless here: every dashboard populates `customer` and `mechanic`,
+ * and a booking whose owner no longer exists populates to null, which reads as a
+ * crash rather than as missing data. So the user's own records go with them.
+ *
+ * Blocking (PATCH isBlocked) is the right tool for a misbehaving real user —
+ * this is for clearing out seeded demo accounts, and it is irreversible.
+ */
+router.delete(
+  '/users/:id',
+  asyncRoute(async (req, res) => {
+    const user = await User.findById(req.params.id);
+    if (!user) throw notFound('User not found');
+
+    // Deleting the last admin would lock everyone out of this dashboard, and no
+    // signup path can create a replacement.
+    if (user.role === 'admin') {
+      throw badRequest('Admin accounts cannot be deleted. Demote or block the account instead.');
+    }
+
+    const id = user._id;
+
+    // Bookings are the hub: messages, payments and reviews all hang off them.
+    const bookingIds = (await Booking.find({ $or: [{ customer: id }, { mechanic: id }] }).select('_id')).map(
+      (b) => b._id
+    );
+    const orderIds = (await Order.find({ customer: id }).select('_id')).map((o) => o._id);
+
+    // A spare part cannot exist without its vendor - the ref is required - so a
+    // vendor's catalogue goes too.
+    const partIds =
+      user.role === 'vendor' ? (await SparePart.find({ vendor: id }).select('_id')).map((p) => p._id) : [];
+
+    const [messages, payments, reviews, notifications, complaints] = await Promise.all([
+      Message.deleteMany({ $or: [{ booking: { $in: bookingIds } }, { sender: id }] }),
+      Payment.deleteMany({ $or: [{ customer: id }, { booking: { $in: bookingIds } }, { order: { $in: orderIds } }] }),
+      Review.deleteMany({ $or: [{ customer: id }, { mechanic: id }, { booking: { $in: bookingIds } }] }),
+      Notification.deleteMany({ user: id }),
+      Complaint.deleteMany({ $or: [{ raisedBy: id }, { against: id }, { booking: { $in: bookingIds } }] }),
+    ]);
+
+    await Promise.all([
+      Booking.deleteMany({ _id: { $in: bookingIds } }),
+      Order.deleteMany({ _id: { $in: orderIds } }),
+      partIds.length > 0 ? SparePart.deleteMany({ _id: { $in: partIds } }) : Promise.resolve(),
+      // Other customers may have favourited this mechanic.
+      User.updateMany({ favouriteMechanics: id }, { $pull: { favouriteMechanics: id } }),
+    ]);
+
+    await user.deleteOne();
+
+    res.json({
+      message: `Deleted ${user.name} (${user.email})`,
+      deleted: {
+        user: 1,
+        bookings: bookingIds.length,
+        orders: orderIds.length,
+        spareParts: partIds.length,
+        messages: messages.deletedCount,
+        payments: payments.deletedCount,
+        reviews: reviews.deletedCount,
+        notifications: notifications.deletedCount,
+        complaints: complaints.deletedCount,
+      },
+    });
   })
 );
 
