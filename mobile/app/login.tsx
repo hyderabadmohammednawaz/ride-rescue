@@ -9,10 +9,9 @@ import { setPendingSignup } from '../lib/signupDraft';
 import { Button, Card } from '../components/ui';
 import { colors } from '../lib/theme';
 
-const DEMO = [
-  { label: '🧑  Customer', email: 'customer@riderescue.in' },
-  { label: '🔧  Mechanic', email: 'mechanic@riderescue.in' },
-];
+// The seeded customer and mechanic accounts were deleted so this side of the
+// app runs on real, phone-verified signups, so there are no demo shortcuts
+// here any more: sign in with a mobile number, or create an account.
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -149,17 +148,6 @@ export default function LoginScreen() {
               </>
             )}
 
-            <Text style={styles.divider}>Demo accounts · password123</Text>
-            {DEMO.map((d) => (
-              <Button
-                key={d.email}
-                label={d.label}
-                variant="secondary"
-                onPress={() => submit(d.email)}
-                disabled={busy}
-                style={{ marginTop: 8 }}
-              />
-            ))}
           </Card>
 
           <Pressable onPress={() => router.push('/register')} style={styles.signupRow}>

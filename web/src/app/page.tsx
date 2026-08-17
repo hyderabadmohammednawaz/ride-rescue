@@ -14,9 +14,9 @@ const FEATURES = [
   { icon: '💳', title: 'Secure payments', text: 'UPI, card, wallet or cash, with an invoice generated the moment the job is done.' },
 ];
 
+// Customer and mechanic run on real, phone-verified signups now, so only the
+// two roles that still have a seeded account are advertised here.
 const DEMO_LOGINS = [
-  { role: 'Customer', email: 'customer@riderescue.in' },
-  { role: 'Mechanic', email: 'mechanic@riderescue.in' },
   { role: 'Vendor', email: 'vendor@riderescue.in' },
   { role: 'Admin', email: 'admin@riderescue.in' },
 ];

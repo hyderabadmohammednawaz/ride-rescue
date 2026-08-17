@@ -12,9 +12,15 @@ const STEP_FRACTION = 0.15;
 const MIN_STEP_KM = 0.08;
 
 /**
- * Advances the position of any mechanic who is en route to a job, so live
- * tracking on the map animates during a demo without a phone streaming real GPS.
- * A real device sending `location:update` over the socket simply overrides this.
+ * Advances the position of any *seeded* mechanic who is en route to a job, so
+ * live tracking on the map animates during a demo without a phone streaming
+ * real GPS.
+ *
+ * Mechanics who signed up for real are skipped. Their phone streams genuine
+ * coordinates over `location:update`, and a simulator tick would not "simply be
+ * overridden" — both write every few seconds, so the two would fight, and the
+ * tick also writes to User.location, corrupting where that mechanic actually is.
+ * A Firebase uid is what distinguishes a real account from a seeded one.
  */
 export function startSimulator() {
   console.log('[sim] mechanic movement simulator running (set SIMULATE=false to disable)');
@@ -24,7 +30,18 @@ export function startSimulator() {
       const enRoute = await Booking.find({ status: 'accepted', mechanic: { $ne: null } }).limit(20);
       if (enRoute.length === 0) return;
 
+      // One query for the batch rather than one per booking.
+      const realMechanicIds = new Set(
+        (
+          await User.find({
+            _id: { $in: enRoute.map((b) => b.mechanic) },
+            firebaseUid: { $exists: true, $ne: null },
+          }).select('_id')
+        ).map((m) => String(m._id))
+      );
+
       for (const booking of enRoute) {
+        if (realMechanicIds.has(String(booking.mechanic))) continue;
         const target = booking.pickupLocation.coordinates;
         const current = booking.mechanicLocation?.coordinates;
         if (!current) continue;

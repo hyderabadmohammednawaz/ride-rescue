@@ -19,9 +19,12 @@ import {
 } from '@/lib/phoneAuth';
 import type { User } from '@/lib/types';
 
+/**
+ * Only the roles that still have a seeded account. The demo customer and
+ * mechanic were deleted so that side of the app runs on real, phone-verified
+ * signups — a button that logs into a deleted account is worse than no button.
+ */
 const DEMO = [
-  { label: 'Customer', email: 'customer@riderescue.in', icon: '🧑' },
-  { label: 'Mechanic', email: 'mechanic@riderescue.in', icon: '🔧' },
   { label: 'Vendor', email: 'vendor@riderescue.in', icon: '🏪' },
   { label: 'Admin', email: 'admin@riderescue.in', icon: '🛡️' },
 ];
@@ -275,8 +278,11 @@ export default function LoginPage() {
       )}
 
       <div className="mt-6 border-t border-slate-100 pt-5 dark:border-slate-800">
-        <p className="mb-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        <p className="mb-1 text-center text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           One-click demo login
+        </p>
+        <p className="mb-3 text-center text-xs text-slate-500 dark:text-slate-400">
+          Customers and mechanics use real accounts — sign up with your mobile number.
         </p>
         <div className="grid grid-cols-2 gap-2">
           {DEMO.map((d) => (
