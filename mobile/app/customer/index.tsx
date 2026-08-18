@@ -296,6 +296,18 @@ export default function CustomerHome() {
         style={{ marginTop: 8 }}
       />
       <Button
+        label="🔩  Spare parts store"
+        variant="secondary"
+        onPress={() => router.push('/customer/store')}
+        style={{ marginTop: 8 }}
+      />
+      <Button
+        label="📦  My orders"
+        variant="secondary"
+        onPress={() => router.push('/customer/orders')}
+        style={{ marginTop: 8 }}
+      />
+      <Button
         label="🏍️  My bikes & profile"
         variant="secondary"
         onPress={() => router.push('/customer/profile')}

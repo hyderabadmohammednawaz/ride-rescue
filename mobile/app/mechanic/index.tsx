@@ -235,10 +235,22 @@ export default function MechanicHome() {
       )}
 
       <Button
-        label="View earnings"
+        label="💰  View earnings"
         variant="secondary"
         onPress={() => router.push('/mechanic/earnings')}
         style={{ marginTop: 14 }}
+      />
+      <Button
+        label="📜  Job history"
+        variant="secondary"
+        onPress={() => router.push('/mechanic/history')}
+        style={{ marginTop: 8 }}
+      />
+      <Button
+        label="👤  My profile"
+        variant="secondary"
+        onPress={() => router.push('/mechanic/profile')}
+        style={{ marginTop: 8 }}
       />
     </ScrollView>
   );
