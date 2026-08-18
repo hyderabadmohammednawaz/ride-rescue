@@ -7,7 +7,11 @@ export interface Vehicle {
   make: string;
   model: string;
   registrationNumber: string;
+  year?: number;
+  fuelType?: 'Petrol' | 'Electric';
   odometerKm?: number;
+  lastServiceOdometerKm?: number;
+  lastServiceDate?: string;
   isPrimary?: boolean;
 }
 
@@ -19,6 +23,8 @@ export interface User {
   role: 'customer' | 'mechanic' | 'vendor' | 'admin';
   avatarColor?: string;
   walletBalance: number;
+  referralCode?: string;
+  phoneVerified?: boolean;
   location: { coordinates: [number, number]; address?: string };
   vehicles: Vehicle[];
   emergencyContact?: { name?: string; phone?: string };

@@ -295,6 +295,12 @@ export default function CustomerHome() {
         onPress={() => router.push('/customer/bookings')}
         style={{ marginTop: 8 }}
       />
+      <Button
+        label="🏍️  My bikes & profile"
+        variant="secondary"
+        onPress={() => router.push('/customer/profile')}
+        style={{ marginTop: 8 }}
+      />
     </ScrollView>
   );
 }
