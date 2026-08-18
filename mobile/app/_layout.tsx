@@ -32,11 +32,9 @@ export default function RootLayout() {
             <Stack.Screen name="customer/store" options={{ title: 'Spare parts' }} />
             <Stack.Screen name="customer/cart" options={{ title: 'Cart' }} />
             <Stack.Screen name="customer/orders" options={{ title: 'My orders' }} />
-            <Stack.Screen name="mechanic/index" options={{ title: 'Mechanic dashboard' }} />
-            <Stack.Screen name="mechanic/job/[id]" options={{ title: 'Job details' }} />
-            <Stack.Screen name="mechanic/earnings" options={{ title: 'Earnings' }} />
-            <Stack.Screen name="mechanic/profile" options={{ title: 'My profile' }} />
-            <Stack.Screen name="mechanic/history" options={{ title: 'Job history' }} />
+            {/* The mechanic side owns its own tab navigator, so it is one
+                screen here rather than five. */}
+            <Stack.Screen name="mechanic" options={{ headerShown: false }} />
           </Stack>
         </SocketProvider>
         </CartProvider>

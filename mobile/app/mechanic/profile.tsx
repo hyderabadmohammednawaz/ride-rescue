@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
-import { useRouter } from 'expo-router';
 import { api, rupees } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { Button, Card, Loading, Row, Stars } from '../../components/ui';
@@ -15,7 +14,6 @@ import { colors } from '../../lib/theme';
  */
 export default function MechanicProfileScreen() {
   const { user, refresh, logout } = useAuth();
-  const router = useRouter();
 
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -158,12 +156,6 @@ export default function MechanicProfileScreen() {
         <Button label="Save settings" onPress={save} loading={busy} style={{ marginTop: 16 }} />
       </Card>
 
-      <Button
-        label="📜  Job history"
-        variant="secondary"
-        onPress={() => router.push('/mechanic/history')}
-        style={{ marginTop: 16 }}
-      />
       <Button
         label="Log out"
         variant="secondary"
