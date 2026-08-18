@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { colors } from '../lib/theme';
 
@@ -38,11 +38,35 @@ function buildGoogleHtml(pins: MapPin[], drawRoute: boolean) {
   <div id="map"></div>
   <script>
     var data = ${payload};
-    var glyphs = { customer: '\u{1F4CD}', mechanic: '\u{1F3CD}' };
     var map, markers = {}, routeLine = null;
+    var pending = null;
+
+    // A teardrop for the customer and a disc for the mechanic. Colour alone was
+    // not enough to tell them apart at a glance — the shapes differ so the two
+    // are distinguishable even before you read the label.
+    var PIN_PATH = 'M 0,0 C -2,-9 -9,-11 -9,-17 A 9,9 0 1,1 9,-17 C 9,-11 2,-9 0,0 z';
+
+    function iconFor(kind) {
+      if (kind === 'customer') {
+        return {
+          path: PIN_PATH, fillColor: '#dc2626', fillOpacity: 1,
+          strokeColor: '#ffffff', strokeWeight: 2, scale: 1.5,
+          labelOrigin: new google.maps.Point(0, -17)
+        };
+      }
+      return {
+        path: google.maps.SymbolPath.CIRCLE, fillColor: '#2563eb', fillOpacity: 1,
+        strokeColor: '#ffffff', strokeWeight: 3, scale: 13,
+        labelOrigin: new google.maps.Point(0, 0)
+      };
+    }
+
+    function labelFor(kind) {
+      return { text: kind === 'customer' ? 'C' : 'M', color: '#ffffff', fontSize: '12px', fontWeight: '700' };
+    }
 
     function render(state) {
-      if (!map) return;
+      if (!map) { pending = state; return; }
       var bounds = new google.maps.LatLngBounds();
       var seen = {};
 
@@ -54,12 +78,9 @@ function buildGoogleHtml(pins: MapPin[], drawRoute: boolean) {
         } else {
           markers[p.id] = new google.maps.Marker({
             position: pos, map: map, title: p.label,
-            label: { text: glyphs[p.kind] || '', fontSize: '15px' },
-            icon: {
-              path: google.maps.SymbolPath.CIRCLE, scale: 16,
-              fillColor: p.kind === 'customer' ? '#dc2626' : '#2563eb',
-              fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 2
-            }
+            zIndex: p.kind === 'mechanic' ? 2 : 1,
+            label: labelFor(p.kind),
+            icon: iconFor(p.kind)
           });
         }
       });
@@ -86,7 +107,10 @@ function buildGoogleHtml(pins: MapPin[], drawRoute: boolean) {
         mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
         styles: [{ featureType: 'poi', stylers: [{ visibility: 'off' }] }]
       });
-      render(data);
+      // Google loads asynchronously, so positions can arrive before the map
+      // exists. render() parks the newest one here rather than dropping it,
+      // which is what made live movement look frozen.
+      render(pending || data);
     }
     window.initMap = initMap;
 
@@ -215,8 +239,11 @@ export default function TrackingMap({
     if (loaded.current) push();
   }, [payload]);
 
+  const hasMechanic = pins.some((p) => p.kind === 'mechanic');
+
   return (
-    <View style={[styles.wrapper, { height }]}>
+    <View>
+      <View style={[styles.wrapper, { height }]}>
       <WebView
         ref={webRef}
         source={{ html }}
@@ -230,6 +257,24 @@ export default function TrackingMap({
           push();
         }}
       />
+      </View>
+
+      <View style={styles.legend}>
+        <View style={styles.legendItem}>
+          <View style={[styles.swatch, styles.swatchCustomer]}>
+            <Text style={styles.swatchText}>C</Text>
+          </View>
+          <Text style={styles.legendLabel}>Customer</Text>
+        </View>
+        {hasMechanic ? (
+          <View style={styles.legendItem}>
+            <View style={[styles.swatch, styles.swatchMechanic]}>
+              <Text style={styles.swatchText}>M</Text>
+            </View>
+            <Text style={styles.legendLabel}>Mechanic</Text>
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -243,4 +288,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   web: { flex: 1, backgroundColor: colors.background },
+  legend: { flexDirection: 'row', gap: 18, marginTop: 8, paddingHorizontal: 2 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  swatch: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  swatchCustomer: { backgroundColor: '#dc2626', borderRadius: 10, borderBottomLeftRadius: 2 },
+  swatchMechanic: { backgroundColor: '#2563eb' },
+  swatchText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  legendLabel: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
 });

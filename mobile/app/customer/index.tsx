@@ -77,10 +77,15 @@ export default function CustomerHome() {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return;
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      // High, not Balanced: this position becomes the pickup point of any
+      // booking made from here, so it is where a mechanic gets sent.
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       await api('/profile/location', {
         method: 'PUT',
-        body: { coordinates: [pos.coords.longitude, pos.coords.latitude] },
+        body: {
+          coordinates: [pos.coords.longitude, pos.coords.latitude],
+          accuracy: pos.coords.accuracy,
+        },
       }).catch(() => {});
       await refresh();
       load();
@@ -139,13 +144,15 @@ export default function CustomerHome() {
 
   const bookService = async (service: ServiceType) => {
     if (!user?.vehicles?.length) {
-      Alert.alert('Add a vehicle first', 'Add your bike in the web app profile before booking a service.');
+      Alert.alert('Add a vehicle first', 'Add your bike under My bikes & profile before booking a service.');
       return;
     }
     try {
       let coordinates: [number, number] | undefined;
       try {
-        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        // This is the address a mechanic rides to, so take the best fix
+        // available rather than a quick approximate one.
+        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
         coordinates = [pos.coords.longitude, pos.coords.latitude];
       } catch {
         /* use the saved account location */

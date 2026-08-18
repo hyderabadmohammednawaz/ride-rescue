@@ -12,11 +12,15 @@ import type { MapMarker } from './LiveMap';
  * domains in Google Cloud Console, or anyone can spend your quota.
  */
 
-const EMOJI: Record<MapMarker['kind'], string> = {
-  customer: '📍',
-  mechanic: '🏍️',
-  highlight: '🔧',
+/** One letter reads at any zoom; an emoji inside a small marker does not. */
+const LETTER: Record<MapMarker['kind'], string> = {
+  customer: 'C',
+  mechanic: 'M',
+  highlight: '★',
 };
+
+/** Classic teardrop, drawn tip-down so the point sits on the coordinate. */
+const PIN_PATH = 'M 0,0 C -2,-9 -9,-11 -9,-17 A 9,9 0 1,1 9,-17 C 9,-11 2,-9 0,0 z';
 
 const COLOR: Record<MapMarker['kind'], string> = {
   customer: '#dc2626',
@@ -115,19 +119,33 @@ export default function GoogleMapView({
         markers.forEach((m) => {
           const position = { lat: m.position[0], lng: m.position[1] };
           bounds.extend(position);
+          // A teardrop for the customer, a disc for everyone else. Colour alone
+          // was not enough to tell the two apart at a glance.
+          const isCustomer = m.kind === 'customer';
           const marker = new g.maps.Marker({
             position,
             map: map.current,
             title: m.label,
-            label: { text: EMOJI[m.kind], fontSize: '18px' },
-            icon: {
-              path: g.maps.SymbolPath.CIRCLE,
-              scale: 17,
-              fillColor: m.color || COLOR[m.kind],
-              fillOpacity: 1,
-              strokeColor: '#ffffff',
-              strokeWeight: 2,
-            },
+            zIndex: isCustomer ? 1 : 2,
+            label: { text: LETTER[m.kind], color: '#ffffff', fontSize: '12px', fontWeight: '700' },
+            icon: isCustomer
+              ? {
+                  path: PIN_PATH,
+                  scale: 1.6,
+                  fillColor: m.color || COLOR[m.kind],
+                  fillOpacity: 1,
+                  strokeColor: '#ffffff',
+                  strokeWeight: 2,
+                  labelOrigin: new g.maps.Point(0, -17),
+                }
+              : {
+                  path: g.maps.SymbolPath.CIRCLE,
+                  scale: 14,
+                  fillColor: m.color || COLOR[m.kind],
+                  fillOpacity: 1,
+                  strokeColor: '#ffffff',
+                  strokeWeight: 3,
+                },
           });
           const info = new g.maps.InfoWindow({
             content: `<strong>${m.label}</strong>${m.sublabel ? `<br/>${m.sublabel}` : ''}`,

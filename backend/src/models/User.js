@@ -78,6 +78,10 @@ const userSchema = new mongoose.Schema(
       coordinates: { type: [Number], default: [78.4867, 17.385] }, // Hyderabad
       updatedAt: Date,
       address: String,
+      // Radius of uncertainty in metres, as reported by the geolocation API.
+      // A GPS fix is single digits to tens; a wifi or IP fix can be hundreds or
+      // thousands, and that difference decides whether an update is accepted.
+      accuracy: Number,
     },
     vehicles: [vehicleSchema],
     mechanicProfile: mechanicProfileSchema,

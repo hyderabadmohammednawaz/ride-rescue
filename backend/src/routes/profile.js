@@ -33,13 +33,50 @@ router.patch(
   })
 );
 
-// PUT /api/profile/location - called by the browser/app as the user moves
+/**
+ * PUT /api/profile/location — called by the browser and the app as the user moves.
+ *
+ * Not every fix is worth keeping. A laptop browser has no GPS, so it returns a
+ * wifi or IP-derived position that can be a kilometre out, and the web app
+ * reports one on every page load. Left unguarded that coarse fix overwrites the
+ * precise GPS the phone just sent, and since a booking copies the customer's
+ * stored location, the mechanic is then sent to the wrong place.
+ *
+ * So a fix is rejected when it is much vaguer than one we already hold and that
+ * one is still fresh. Clients send `accuracy` in metres, straight from the
+ * geolocation API; an update without it is treated as unknown quality and only
+ * accepted when nothing better is on file.
+ */
+const STALE_AFTER_MS = 15 * 60 * 1000;
+/** Anything vaguer than this is a network-derived guess rather than a GPS fix. */
+const COARSE_METRES = 200;
+
 router.put(
   '/location',
   asyncRoute(async (req, res) => {
-    const { coordinates, address } = req.body;
+    const { coordinates, address, accuracy } = req.body;
     if (!Array.isArray(coordinates) || coordinates.length !== 2) throw badRequest('coordinates must be [longitude, latitude]');
-    req.user.location = { type: 'Point', coordinates, address, updatedAt: new Date() };
+
+    const incoming = Number.isFinite(accuracy) ? Number(accuracy) : null;
+    const held = req.user.location;
+    const heldAge = held?.updatedAt ? Date.now() - new Date(held.updatedAt).getTime() : Infinity;
+    const heldIsFresh = heldAge < STALE_AFTER_MS;
+    const heldAccuracy = Number.isFinite(held?.accuracy) ? held.accuracy : null;
+
+    // Keep the better fix, but never let a stale one win indefinitely.
+    const incomingIsCoarse = incoming === null || incoming > COARSE_METRES;
+    const heldIsPrecise = heldAccuracy !== null && heldAccuracy <= COARSE_METRES;
+    if (incomingIsCoarse && heldIsPrecise && heldIsFresh) {
+      return res.json({ location: held, ignored: true, reason: 'a more precise recent fix is on file' });
+    }
+
+    req.user.location = {
+      type: 'Point',
+      coordinates,
+      address: address ?? held?.address,
+      accuracy: incoming,
+      updatedAt: new Date(),
+    };
     await req.user.save();
     res.json({ location: req.user.location });
   })

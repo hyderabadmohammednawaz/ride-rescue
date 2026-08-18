@@ -66,7 +66,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (pos) => {
         api('/profile/location', {
           method: 'PUT',
-          body: { coordinates: [pos.coords.longitude, pos.coords.latitude] },
+          body: {
+            coordinates: [pos.coords.longitude, pos.coords.latitude],
+            // A laptop has no GPS, so this is often hundreds of metres. The
+            // server uses it to avoid overwriting a better fix from the phone.
+            accuracy: pos.coords.accuracy,
+          },
         }).catch(() => {});
       },
       () => {
