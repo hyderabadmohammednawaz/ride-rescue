@@ -26,21 +26,33 @@ const COLOR: Record<MapMarker['kind'], string> = {
 
 let loader: Promise<void> | null = null;
 
+const READY_CALLBACK = '__riderescueMapsReady';
+
 /**
- * Loads the Maps script once per page. Google exposes no module build, so this
- * is a script tag guarded against being added twice — React strict mode mounts
- * effects twice in development and would otherwise load it again.
+ * Loads the Maps script once per page.
+ *
+ * Resolving on the script's `onload` does not work: with `loading=async` the
+ * script returns before the library is installed, so `google.maps.Map` is still
+ * undefined and constructing one throws "maps.Map is not a constructor". Google
+ * signals readiness through the `callback` parameter instead, and that is what
+ * this waits on.
+ *
+ * The promise is cached because React mounts effects twice in development, and
+ * every map on a page shares one script tag.
  */
 function loadMaps(apiKey: string): Promise<void> {
   if (typeof window === 'undefined') return Promise.reject(new Error('no window'));
-  if ((window as any).google?.maps) return Promise.resolve();
+  if ((window as any).google?.maps?.Map) return Promise.resolve();
   if (loader) return loader;
 
   loader = new Promise<void>((resolve, reject) => {
+    (window as any)[READY_CALLBACK] = () => resolve();
+
     const el = document.createElement('script');
-    el.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=marker&loading=async`;
+    el.src =
+      `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}` +
+      `&loading=async&callback=${READY_CALLBACK}`;
     el.async = true;
-    el.onload = () => resolve();
     el.onerror = () => {
       loader = null; // allow a later retry rather than reusing a rejected promise
       reject(new Error('Could not load Google Maps'));
