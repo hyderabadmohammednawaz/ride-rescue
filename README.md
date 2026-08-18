@@ -754,8 +754,17 @@ verification. Nothing about the code changes between the two — only the keys.
 `GET /api/auth/config` then reports `paymentGateway: "razorpay"` instead of `"mock"`, and the
 checkout dialog switches from settling instantly to opening the real Razorpay sheet.
 
-**Test credentials:** card `4111 1111 1111 1111`, any future expiry, any CVV — or UPI id
-`success@razorpay`. Use `failure@razorpay` to exercise the declined path.
+**Test credentials:** UPI id `success@razorpay`, or `failure@razorpay` to exercise the declined path.
+
+> **Do not use `4111 1111 1111 1111`.** It is quoted all over the internet as *the* test card, but
+> Razorpay classifies it as an **international** card, and Indian accounts have international
+> payments disabled unless separately approved. It fails with *"International cards are not
+> supported"* — which looks like a broken integration and is not one. Razorpay's domestic test cards
+> are listed in [their docs](https://razorpay.com/docs/payments/payments/test-card-details/); UPI
+> avoids the issue entirely and is the quicker demo anyway.
+
+A declined attempt leaves the payment **pending**, not failed: no signature comes back, so nothing is
+confirmed, and the customer can simply try again. Only a *tampered* signature marks it failed.
 
 **How the flow works, and why:**
 
