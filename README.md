@@ -754,7 +754,16 @@ verification. Nothing about the code changes between the two — only the keys.
 `GET /api/auth/config` then reports `paymentGateway: "razorpay"` instead of `"mock"`, and the
 checkout dialog switches from settling instantly to opening the real Razorpay sheet.
 
-**Test credentials:** UPI id `success@razorpay`, or `failure@razorpay` to exercise the declined path.
+**Test credentials:** easiest is **Netbanking** — pick any bank and Razorpay serves a mock page with
+Success and Failure buttons, so there is no number to type and no instrument that can be rejected.
+UPI id `success@razorpay` also works, *but only if UPI is enabled on the account*.
+
+> **Check which methods your account actually has** before blaming the integration:
+> ```bash
+> curl "https://api.razorpay.com/v1/preferences?key_id=rzp_test_xxxxxxxx"
+> ```
+> UPI is **off by default** on a fresh test account. Enable it under Razorpay Dashboard →
+> Account & Settings → Payment Methods.
 
 > **Do not use `4111 1111 1111 1111`.** It is quoted all over the internet as *the* test card, but
 > Razorpay classifies it as an **international** card, and Indian accounts have international

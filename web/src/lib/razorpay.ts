@@ -20,15 +20,18 @@ export interface CheckoutOptions {
 }
 
 /**
- * Opens checkout on the instrument the customer already chose.
+ * Surfaces the instrument the customer chose at the top of the sheet.
  *
- * Without this the sheet ignores our selection and opens on its own default
- * tab - pick UPI in our dialog and Razorpay still shows Card, which reads as
- * the app losing the choice. `show_default_blocks: false` suppresses Razorpay's
- * standard list so only the chosen block remains.
+ * Without this the sheet ignores our selection and opens on its own default tab,
+ * which reads as the app losing the choice.
  *
- * Anything unrecognised falls through to the default sheet rather than risking
- * a configuration that shows no methods at all.
+ * Razorpay's default blocks are deliberately left visible. Suppressing them
+ * (`show_default_blocks: false`) hides every other instrument, so if the chosen
+ * one happens to be disabled on the merchant account the sheet resolves to
+ * nothing and checkout dies with "No appropriate payment method found" — a
+ * dead end produced by our own config rather than by the account. Keeping the
+ * defaults means the preference is honoured when the method exists and quietly
+ * ignored when it does not.
  */
 function displayConfig(method?: string) {
   if (method !== 'upi' && method !== 'card') return undefined;
@@ -41,7 +44,7 @@ function displayConfig(method?: string) {
         },
       },
       sequence: ['block.chosen'],
-      preferences: { show_default_blocks: false },
+      preferences: { show_default_blocks: true },
     },
   };
 }

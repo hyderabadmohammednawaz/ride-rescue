@@ -142,13 +142,14 @@ export function PaymentDialog({
 
         {gateway === 'razorpay' && !['wallet', 'cash'].includes(method) && (
           <p className="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300">
-            Razorpay <strong>test mode</strong> — no real money moves. Pay with UPI id{' '}
-            <code className="font-mono font-semibold">success@razorpay</code> (or{' '}
-            <code className="font-mono font-semibold">failure@razorpay</code> to see a decline).
+            Razorpay <strong>test mode</strong> — no real money moves. Easiest instrument is{' '}
+            <strong>Netbanking</strong>: pick any bank and Razorpay shows a mock page with Success and
+            Failure buttons, so nothing needs to be typed in.
             <br />
-            Test <em>cards</em> are listed in Razorpay&apos;s docs — the widely quoted
-            4111&nbsp;1111&nbsp;1111&nbsp;1111 is an <strong>international</strong> card and Indian
-            accounts reject it with &ldquo;International cards are not supported&rdquo;.
+            UPI id <code className="font-mono font-semibold">success@razorpay</code> works only if UPI
+            is enabled on the merchant account. Avoid card{' '}
+            <code className="font-mono">4111&nbsp;1111&nbsp;1111&nbsp;1111</code> — it is an{' '}
+            <strong>international</strong> card and Indian accounts reject it.
           </p>
         )}
 
