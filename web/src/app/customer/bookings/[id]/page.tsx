@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { api, formatDateTime, rupees } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useSocketEvent } from '@/lib/socket';
+import { useBookingRoom } from '@/lib/useBookingRoom';
 import { useToast } from '@/components/Toast';
 import MapView, { type MapMarker } from '@/components/MapView';
 import { BookingChat } from '@/components/BookingChat';
@@ -23,6 +24,10 @@ const STEPS: { key: string; label: string; icon: string }[] = [
 
 export default function TrackBookingPage() {
   const { id } = useParams<{ id: string }>();
+
+  // Live location and chat are broadcast to the booking's room; without
+  // joining it this page would listen and never hear anything.
+  useBookingRoom(id);
   const { user, refresh } = useAuth();
   const { push } = useToast();
   const [booking, setBooking] = useState<Booking | null>(null);

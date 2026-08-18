@@ -12,12 +12,98 @@ export interface MapPin {
 }
 
 /**
- * Leaflet + OpenStreetMap inside a WebView. This keeps the map free of any
- * Google Maps API key or billing account, and renders identically to the web
- * app. Leaflet itself is loaded from the CDN — the map needs a network
- * connection for tiles regardless.
+ * The map, inside a WebView.
+ *
+ * Google Maps is used when EXPO_PUBLIC_GOOGLE_MAPS_API_KEY is set, and Leaflet
+ * with OpenStreetMap otherwise, so a build without a key still shows a map.
+ * Either way the library and tiles arrive over the network — a WebView cannot
+ * render a map offline.
+ *
+ * The key is public by design: it ships inside the APK and is identified by the
+ * app's package name and signing certificate rather than kept secret. Restrict
+ * it in Google Cloud Console, or anyone can spend the quota.
  */
-function buildHtml(pins: MapPin[], drawRoute: boolean) {
+const GOOGLE_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+
+function buildGoogleHtml(pins: MapPin[], drawRoute: boolean) {
+  const payload = JSON.stringify({ pins, drawRoute });
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <style>html,body,#map{height:100%;margin:0;padding:0;background:#f8fafc;}</style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    var data = ${payload};
+    var glyphs = { customer: '\u{1F4CD}', mechanic: '\u{1F3CD}' };
+    var map, markers = {}, routeLine = null;
+
+    function render(state) {
+      if (!map) return;
+      var bounds = new google.maps.LatLngBounds();
+      var seen = {};
+
+      state.pins.forEach(function (p) {
+        var pos = { lat: p.lat, lng: p.lng };
+        bounds.extend(pos); seen[p.id] = true;
+        if (markers[p.id]) {
+          markers[p.id].setPosition(pos);
+        } else {
+          markers[p.id] = new google.maps.Marker({
+            position: pos, map: map, title: p.label,
+            label: { text: glyphs[p.kind] || '', fontSize: '15px' },
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE, scale: 16,
+              fillColor: p.kind === 'customer' ? '#dc2626' : '#2563eb',
+              fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 2
+            }
+          });
+        }
+      });
+
+      Object.keys(markers).forEach(function (id) {
+        if (!seen[id]) { markers[id].setMap(null); delete markers[id]; }
+      });
+
+      if (routeLine) { routeLine.setMap(null); routeLine = null; }
+      if (state.drawRoute && state.pins.length >= 2) {
+        routeLine = new google.maps.Polyline({
+          path: state.pins.map(function (p) { return { lat: p.lat, lng: p.lng }; }),
+          map: map, strokeColor: '#2563eb', strokeOpacity: 0.85, strokeWeight: 4
+        });
+      }
+
+      if (state.pins.length === 1) { map.setCenter(bounds.getCenter()); map.setZoom(15); }
+      else if (state.pins.length > 1) { map.fitBounds(bounds, 45); }
+    }
+
+    function initMap() {
+      map = new google.maps.Map(document.getElementById('map'), {
+        center: { lat: 17.385, lng: 78.4867 }, zoom: 13,
+        mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
+        styles: [{ featureType: 'poi', stylers: [{ visibility: 'off' }] }]
+      });
+      render(data);
+    }
+    window.initMap = initMap;
+
+    function handleMessage(event) {
+      try { render(JSON.parse(event.data)); } catch (e) {}
+    }
+    document.addEventListener('message', handleMessage);
+    window.addEventListener('message', handleMessage);
+  </script>
+  <script async src="https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(
+    GOOGLE_KEY
+  )}&callback=initMap"></script>
+</body>
+</html>`;
+}
+
+function buildOsmHtml(pins: MapPin[], drawRoute: boolean) {
   const payload = JSON.stringify({ pins, drawRoute });
   return `<!DOCTYPE html>
 <html>
@@ -112,7 +198,10 @@ export default function TrackingMap({
 
   // The HTML is built once; later pin changes are posted into the live page so
   // markers glide instead of the whole map reloading.
-  const html = useMemo(() => buildHtml(pins, drawRoute), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const html = useMemo(
+    () => (GOOGLE_KEY ? buildGoogleHtml(pins, drawRoute) : buildOsmHtml(pins, drawRoute)),
+    [] // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const payload = JSON.stringify({ pins, drawRoute });
 

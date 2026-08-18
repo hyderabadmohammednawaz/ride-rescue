@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { api, formatDateTime, rupees } from '@/lib/api';
 import { useSocket, useSocketEvent } from '@/lib/socket';
+import { useBookingRoom } from '@/lib/useBookingRoom';
 import { useToast } from '@/components/Toast';
 import MapView, { type MapMarker } from '@/components/MapView';
 import { BookingChat } from '@/components/BookingChat';
@@ -20,6 +21,10 @@ interface UsedPart {
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
+
+  // Live location and chat are broadcast to the booking's room; without
+  // joining it this page would listen and never hear anything.
+  useBookingRoom(id);
   const router = useRouter();
   const { socket } = useSocket();
   const { push } = useToast();
