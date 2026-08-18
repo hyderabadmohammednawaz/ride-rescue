@@ -17,6 +17,11 @@ import { useAuth } from '../../../lib/auth';
 import { useSocket, useSocketEvent } from '../../../lib/socket';
 import { Button, Card, Loading, Row, StatusBadge, Stars } from '../../../components/ui';
 import TrackingMap, { type MapPin } from '../../../components/TrackingMap';
+import {
+  RazorpayCheckout,
+  type CheckoutOptions,
+  type CheckoutResult,
+} from '../../../components/RazorpayCheckout';
 import { colors } from '../../../lib/theme';
 
 const STEPS = [
@@ -73,6 +78,8 @@ export default function TrackBookingScreen() {
   const [draft, setDraft] = useState('');
   const [rating, setRating] = useState(0);
   const [busy, setBusy] = useState(false);
+  // Non-null while Razorpay's sheet is open; carries the payment it belongs to.
+  const [checkout, setCheckout] = useState<{ paymentId: string; options: CheckoutOptions } | null>(null);
   const chatRef = useRef<ScrollView>(null);
 
   const load = useCallback(async () => {
@@ -118,16 +125,52 @@ export default function TrackBookingScreen() {
     setDraft('');
   };
 
+  /** Settles a payment once the gateway (or the mock) has done its part. */
+  const confirmPayment = useCallback(
+    async (paymentId: string, body: object) => {
+      await api(`/payments/${paymentId}/confirm`, { method: 'POST', body });
+      Alert.alert('Payment successful', 'Your invoice is ready in the app.');
+      await load();
+    },
+    [load]
+  );
+
   const pay = async (method: string) => {
     setBusy(true);
     try {
-      const created = await api<{ payment: { _id: string } }>('/payments/create', {
+      // supportsCheckout tells the server this build can complete a real
+      // checkout. Without it the payment stays on the mock gateway, so adding
+      // Razorpay keys can never strand a client that cannot finish the flow.
+      const created = await api<{
+        payment: { _id: string };
+        gateway: string;
+        checkout: CheckoutOptions;
+      }>('/payments/create', {
         method: 'POST',
-        body: { purpose: 'booking', bookingId: id, method },
+        body: { purpose: 'booking', bookingId: id, method, supportsCheckout: true },
       });
-      await api(`/payments/${created.payment._id}/confirm`, { method: 'POST', body: {} });
-      Alert.alert('Payment successful', 'Your invoice is ready in the web app.');
-      await load();
+
+      if (created.gateway === 'razorpay') {
+        // Hand off to the WebView sheet; the rest happens in its callbacks.
+        setCheckout({ paymentId: created.payment._id, options: created.checkout });
+        return;
+      }
+
+      await confirmPayment(created.payment._id, {});
+    } catch (err: any) {
+      Alert.alert('Payment failed', err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onCheckoutResult = async (result: CheckoutResult) => {
+    const pending = checkout;
+    setCheckout(null);
+    if (!pending) return;
+    setBusy(true);
+    try {
+      await confirmPayment(pending.paymentId, result);
     } catch (err: any) {
       Alert.alert('Payment failed', err.message);
     } finally {
@@ -344,6 +387,18 @@ export default function TrackBookingScreen() {
           <Row label="Location" value={booking.pickupLocation.address || '—'} />
         </Card>
       </ScrollView>
+
+      <RazorpayCheckout
+        options={checkout?.options ?? null}
+        onResult={onCheckoutResult}
+        // Closing the sheet is not a failure: no signature came back, so the
+        // payment simply stays pending and can be retried.
+        onDismiss={() => setCheckout(null)}
+        onError={(message) => {
+          setCheckout(null);
+          Alert.alert('Payment not completed', message);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }
