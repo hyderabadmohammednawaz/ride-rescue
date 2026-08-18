@@ -18,6 +18,11 @@ than canned responses.
 
 ---
 
+> **Moving to another machine?** See **[SETUP.md](SETUP.md)** — note that five gitignored files must
+> be copied by hand; `git clone` alone leaves you with a project that will not start.
+>
+> **Preparing for the viva?** See **[VIVA.md](VIVA.md)**.
+
 ## Table of contents
 
 - [What is in the box](#what-is-in-the-box)
