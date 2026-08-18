@@ -64,7 +64,12 @@ export function PaymentDialog({
       // get back a signature; the mock gateway settles instantly instead.
       let confirmBody: object = {};
       if (created.gateway === 'razorpay') {
-        confirmBody = await openCheckout(created.checkout);
+        // Carry the customer's choice through, so the sheet opens on the
+        // instrument they picked rather than Razorpay's default tab.
+        confirmBody = await openCheckout({
+          ...created.checkout,
+          method: method === 'upi' || method === 'card' ? method : undefined,
+        });
       }
 
       const confirmed = await api<{ message: string }>(`/payments/${created.payment._id}/confirm`, {

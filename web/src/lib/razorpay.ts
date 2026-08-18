@@ -15,6 +15,35 @@ export interface CheckoutOptions {
   name: string;
   description: string;
   prefill: { name?: string; email?: string; contact?: string };
+  /** The instrument the customer picked in our dialog, if it maps to a gateway one. */
+  method?: 'upi' | 'card';
+}
+
+/**
+ * Opens checkout on the instrument the customer already chose.
+ *
+ * Without this the sheet ignores our selection and opens on its own default
+ * tab - pick UPI in our dialog and Razorpay still shows Card, which reads as
+ * the app losing the choice. `show_default_blocks: false` suppresses Razorpay's
+ * standard list so only the chosen block remains.
+ *
+ * Anything unrecognised falls through to the default sheet rather than risking
+ * a configuration that shows no methods at all.
+ */
+function displayConfig(method?: string) {
+  if (method !== 'upi' && method !== 'card') return undefined;
+  return {
+    display: {
+      blocks: {
+        chosen: {
+          name: method === 'upi' ? 'Pay via UPI' : 'Pay by card',
+          instruments: [{ method }],
+        },
+      },
+      sequence: ['block.chosen'],
+      preferences: { show_default_blocks: false },
+    },
+  };
 }
 
 export interface CheckoutResult {
@@ -65,6 +94,7 @@ export async function openCheckout(options: CheckoutOptions): Promise<CheckoutRe
       name: options.name,
       description: options.description,
       prefill: options.prefill,
+      config: displayConfig(options.method),
       theme: { color: '#2563eb' },
       handler: (res: any) => {
         settled = true;
