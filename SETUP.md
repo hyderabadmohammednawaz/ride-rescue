@@ -167,11 +167,16 @@ npm test
 That is a **59-check end-to-end regression** covering auth, role-based access control, the booking
 lifecycle, all four AI features, the store, and both dashboards. All 59 should pass.
 
-To run it against production instead:
+It can be pointed at another host:
 
 ```bash
 API_BASE=https://riderescue-api.onrender.com npm test
 ```
+
+> **Against production this no longer passes in full, and that is expected.** The suite signs in as
+> the seeded `customer@` and `mechanic@` accounts, which were deliberately deleted from the live
+> database so that side of the app runs on real phone-verified signups. Those checks fail; vendor,
+> admin and the unauthenticated checks still pass. **A clean 59/59 means a seeded local database.**
 
 ---
 

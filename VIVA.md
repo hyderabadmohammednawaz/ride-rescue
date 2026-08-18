@@ -280,8 +280,11 @@ start OTP, and the QR token on the completed record.
 check. The role alone is not enough — that distinction is the point.
 
 **"What is your test coverage?"** → A 59-check end-to-end regression covering auth, RBAC, the booking
-lifecycle, all four AI features, the store and both dashboards, runnable against local or production
-(`API_BASE=... npm test`). Be honest: these are integration checks, not unit tests.
+lifecycle, all four AI features, the store and both dashboards. Be honest about two things: these are
+integration checks rather than unit tests, and **the full 59 pass against a seeded database**. Run
+against production, the checks that sign in as the seeded customer and mechanic fail by design —
+those accounts were deleted so that side of the app runs on real phone-verified signups. Knowing
+*why* your own suite fails in one environment is a better answer than claiming it always passes.
 
 **"How many users can it handle?"** → Free tier: 512 MB RAM, shared CPU — fine for a demo, not for
 real traffic. The architecture scales by moving Socket.IO to a Redis adapter and running multiple
