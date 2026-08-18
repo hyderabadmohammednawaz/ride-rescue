@@ -55,19 +55,32 @@ git config user.email "255927115+hyderabadmohammednawaz@users.noreply.github.com
 Copy these from the old machine to the same paths on the new one. They are gitignored on purpose:
 three are secrets, and one is tied to a specific Firebase project.
 
-| File | What it is | If it is missing |
+| File | What it is | How to get it |
 |---|---|---|
-| `backend/.env` | DB URI, JWT secret, Razorpay keys | Backend runs on embedded Mongo with a dev JWT secret; payments fall back to mock |
-| `web/.env.local` | `NEXT_PUBLIC_API_URL` | Web app calls `http://localhost:5000` |
-| `mobile/.env` | `EXPO_PUBLIC_API_URL` | Phone app cannot reach the API |
-| `mobile/google-services.json` | Firebase **client** config | Phone app crashes on launch or cannot send OTPs |
-| `mobile/riderescue-94e68-firebase-adminsdk.json` | Firebase **service-account key** — a real secret | Only needed if you point the backend at it locally; production reads it from Render |
+| `backend/.env` | Port, dev JWT secret, `DEV_MODE` | **Retype it** — copy `backend/.env.example` |
+| `web/.env.local` | `NEXT_PUBLIC_API_URL` | **Retype it** — one line |
+| `mobile/.env` | `EXPO_PUBLIC_API_URL` | **Retype it** — one line |
+| `mobile/google-services.json` | Firebase **client** config | **Re-download** from the Firebase console |
+
+> **None of these contain a production secret**, which is worth knowing before you start emailing
+> files to yourself. Every real credential — the Atlas password, the production JWT secret, the
+> Firebase service-account key, the Razorpay keys — lives in the **Render dashboard**, not in the
+> repository and not in any local file. On a development machine `MONGODB_URI` is left empty (the
+> backend then starts its own MongoDB) and the Razorpay keys are empty (payments settle against the
+> mock gateway). The local `JWT_SECRET` is a throwaway that only signs tokens on your own laptop.
+>
+> So the honest instruction is: **do not carry secrets across.** Retype the three small files and
+> re-download the fourth.
+
+**You do not need `mobile/riderescue-94e68-firebase-adminsdk.json`.** It is the one genuine secret in
+the folder, it is *not* referenced by any local run — `FIREBASE_SERVICE_ACCOUNT` is unset in
+`backend/.env` — and production reads its own copy from Render. It only exists here because it was
+used once to generate the value pasted into Render. Leave it behind, and consider deleting it.
 
 **Do not** copy `backend/data/` (the embedded MongoDB files) or any `node_modules/`. Both are
 regenerated locally, and `backend/data/` is tied to the machine that created it.
 
-Each `.env` has a committed `.env.example` next to it listing every key with comments, so you can
-also rebuild them by hand rather than copying.
+Every `.env` has a committed `.env.example` beside it listing each key with comments.
 
 ### Regenerating them instead of copying
 
