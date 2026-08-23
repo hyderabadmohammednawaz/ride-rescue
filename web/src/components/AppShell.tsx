@@ -5,46 +5,53 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useAuth, HOME_BY_ROLE } from '@/lib/auth';
 import { useCart } from '@/lib/cart';
-import { useI18n, LANGUAGES } from '@/lib/i18n';
+import { useI18n, LANGUAGES, type TranslationKey } from '@/lib/i18n';
 import { useSocket } from '@/lib/socket';
 import { NotificationBell } from './NotificationBell';
 import { Chatbot } from './Chatbot';
 import { Spinner } from './ui';
 import type { Role } from '@/lib/types';
 
+/**
+ * Nav items carry a translation key rather than a label. They used to hold
+ * English strings, so switching language changed the stored preference and
+ * nothing on screen — the picker looked broken while the dictionary sat unused.
+ */
 interface NavItem {
   href: string;
-  label: string;
+  key: TranslationKey;
   icon: string;
 }
 
 const NAV: Record<Role, NavItem[]> = {
   customer: [
-    { href: '/customer', label: 'Home', icon: '🏠' },
-    { href: '/customer/bookings', label: 'My Bookings', icon: '🔧' },
-    { href: '/customer/store', label: 'Spare Parts', icon: '🛒' },
-    { href: '/customer/orders', label: 'Orders', icon: '📦' },
-    { href: '/customer/profile', label: 'Profile', icon: '👤' },
+    { href: '/customer', key: 'nav.home', icon: '🏠' },
+    { href: '/customer/bookings', key: 'nav.bookings', icon: '🔧' },
+    { href: '/customer/store', key: 'nav.store', icon: '🛒' },
+    { href: '/customer/orders', key: 'nav.orders', icon: '📦' },
+    { href: '/customer/profile', key: 'nav.profile', icon: '👤' },
   ],
   mechanic: [
-    { href: '/mechanic', label: 'Dashboard', icon: '📊' },
-    { href: '/mechanic/jobs', label: 'Open Jobs', icon: '🔧' },
-    { href: '/mechanic/earnings', label: 'Earnings', icon: '💰' },
-    { href: '/mechanic/history', label: 'History', icon: '📜' },
-    { href: '/mechanic/profile', label: 'Profile', icon: '👤' },
+    { href: '/mechanic', key: 'nav.dashboard', icon: '📊' },
+    { href: '/mechanic/jobs', key: 'nav.openJobs', icon: '🔧' },
+    { href: '/mechanic/earnings', key: 'nav.earnings', icon: '💰' },
+    { href: '/mechanic/history', key: 'nav.history', icon: '📜' },
+    { href: '/mechanic/profile', key: 'nav.profile', icon: '👤' },
   ],
   vendor: [
-    { href: '/vendor', label: 'Dashboard', icon: '📊' },
-    { href: '/vendor/products', label: 'Products', icon: '🔩' },
-    { href: '/vendor/inventory', label: 'Inventory', icon: '📋' },
-    { href: '/vendor/orders', label: 'Orders', icon: '📦' },
+    { href: '/vendor', key: 'nav.dashboard', icon: '📊' },
+    { href: '/vendor/products', key: 'nav.products', icon: '🔩' },
+    { href: '/vendor/inventory', key: 'nav.inventory', icon: '📋' },
+    { href: '/vendor/orders', key: 'nav.orders', icon: '📦' },
   ],
   admin: [
-    { href: '/admin', label: 'Dashboard', icon: '📊' },
-    { href: '/admin/users', label: 'Users', icon: '👥' },
-    { href: '/admin/bookings', label: 'Bookings', icon: '🔧' },
-    { href: '/admin/reports', label: 'Reports', icon: '📈' },
-    { href: '/admin/complaints', label: 'Complaints', icon: '⚠️' },
+    { href: '/admin', key: 'nav.dashboard', icon: '📊' },
+    { href: '/admin/users', key: 'nav.users', icon: '👥' },
+    // Not nav.bookings: that reads "My Bookings", which is wrong for an admin
+    // looking at everyone's.
+    { href: '/admin/bookings', key: 'nav.allBookings', icon: '🔧' },
+    { href: '/admin/reports', key: 'nav.reports', icon: '📈' },
+    { href: '/admin/complaints', key: 'nav.complaints', icon: '⚠️' },
   ],
 };
 
@@ -91,6 +98,7 @@ function LanguagePicker() {
 
 export function AppShell({ role, children }: { role: Role; children: ReactNode }) {
   const { user, loading, logout } = useAuth();
+  const { t } = useI18n();
   const { count } = useCart();
   const { connected } = useSocket();
   const pathname = usePathname();
@@ -131,7 +139,7 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
                 }`}
               >
                 <span className="mr-1.5">{item.icon}</span>
-                {item.label}
+                {t(item.key)}
               </Link>
             ))}
           </nav>
@@ -172,8 +180,8 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
                 <p className="text-sm font-semibold leading-tight">{user.name}</p>
                 <p className="text-[11px] capitalize text-slate-500 dark:text-slate-400">{user.role}</p>
               </div>
-              <button onClick={logout} className="btn-ghost px-2 py-1 text-xs" title="Log out">
-                Log out
+              <button onClick={logout} className="btn-ghost px-2 py-1 text-xs" title={t('nav.logout')}>
+                {t('nav.logout')}
               </button>
             </div>
 
@@ -199,12 +207,19 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
                 }`}
               >
                 <span className="mr-2">{item.icon}</span>
-                {item.label}
+                {t(item.key)}
               </Link>
             ))}
             <button onClick={logout} className="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium text-red-600">
-              <span className="mr-2">🚪</span>Log out
+              <span className="mr-2">🚪</span>
+              {t('nav.logout')}
             </button>
+
+            {/* The picker is hidden on small screens in the header bar, so the
+                mobile menu is the only way to change language on a phone. */}
+            <div className="mt-2 border-t border-slate-200 pt-3 sm:hidden dark:border-slate-800">
+              <LanguagePicker />
+            </div>
           </nav>
         )}
       </header>

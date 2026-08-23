@@ -25,6 +25,8 @@ const STRINGS = {
     'nav.reports': 'Reports',
     'nav.complaints': 'Complaints',
     'nav.logout': 'Log out',
+    'nav.openJobs': 'Open Jobs',
+    'nav.allBookings': 'Bookings',
     'sos.title': 'Emergency Breakdown',
     'sos.button': 'SOS',
     'sos.hint': 'Press and hold for 2 seconds to send an emergency request',
@@ -52,6 +54,8 @@ const STRINGS = {
     'nav.reports': 'रिपोर्ट',
     'nav.complaints': 'शिकायतें',
     'nav.logout': 'लॉग आउट',
+    'nav.openJobs': 'खुले काम',
+    'nav.allBookings': 'बुकिंग',
     'sos.title': 'आपातकालीन ब्रेकडाउन',
     'sos.button': 'SOS',
     'sos.hint': 'आपातकालीन अनुरोध भेजने के लिए 2 सेकंड दबाए रखें',
@@ -79,6 +83,8 @@ const STRINGS = {
     'nav.reports': 'నివేదికలు',
     'nav.complaints': 'ఫిర్యాదులు',
     'nav.logout': 'లాగ్ అవుట్',
+    'nav.openJobs': 'ఖాళీ పనులు',
+    'nav.allBookings': 'బుకింగ్‌లు',
     'sos.title': 'అత్యవసర బ్రేక్‌డౌన్',
     'sos.button': 'SOS',
     'sos.hint': 'అత్యవసర అభ్యర్థన పంపడానికి 2 సెకన్లు నొక్కి ఉంచండి',
@@ -98,7 +104,9 @@ export const LANGUAGES: { code: Language; label: string }[] = [
   { code: 'te', label: 'తెలుగు' },
 ];
 
-type Key = keyof (typeof STRINGS)['en'];
+/** Every translatable string is one of these; a typo fails the build. */
+export type TranslationKey = keyof (typeof STRINGS)['en'];
+type Key = TranslationKey;
 
 const I18nContext = createContext<{ lang: Language; setLang: (l: Language) => void; t: (k: Key) => string }>({
   lang: 'en',
@@ -113,6 +121,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem('riderescue.lang') as Language | null;
     if (saved && saved in STRINGS) setLangState(saved);
   }, []);
+
+  // Keep the document in step, so screen readers announce Hindi and Telugu with
+  // the right pronunciation and the browser stops offering to translate a page
+  // that is already in the reader's language.
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   const setLang = (l: Language) => {
     setLangState(l);
