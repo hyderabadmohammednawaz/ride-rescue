@@ -78,7 +78,7 @@ export default function BookingsPage() {
       ) : (
         <div className="space-y-3">
           {bookings.map((b) => (
-            <Link key={b._id} href={`/customer/bookings/${b._id}`} className="card flex flex-wrap items-center gap-4 transition hover:border-brand-400 hover:shadow-md">
+            <Link key={b._id} href={`/customer/bookings/detail?id=${b._id}`} className="card flex flex-wrap items-center gap-4 transition hover:border-brand-400 hover:shadow-md">
               <span className="text-3xl">{b.serviceType?.icon || '🔧'}</span>
 
               <div className="min-w-[180px] flex-1">

@@ -86,7 +86,7 @@ function BookInner() {
           : 'Booking created. We are finding a mechanic.',
         'success'
       );
-      router.push(`/customer/bookings/${res.booking._id}`);
+      router.push(`/customer/bookings/detail?id=${res.booking._id}`);
     } catch (err: any) {
       push(err.message, 'error');
     } finally {

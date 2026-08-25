@@ -26,7 +26,7 @@ function PartCard({ part }: { part: SparePart }) {
   return (
     <div className="card flex flex-col">
       <div className="flex items-start justify-between">
-        <Link href={`/customer/store/${part._id}`} className="text-4xl">
+        <Link href={`/customer/store/detail?id=${part._id}`} className="text-4xl">
           {part.image || '🔩'}
         </Link>
         <button
@@ -38,7 +38,7 @@ function PartCard({ part }: { part: SparePart }) {
         </button>
       </div>
 
-      <Link href={`/customer/store/${part._id}`} className="mt-2 flex-1">
+      <Link href={`/customer/store/detail?id=${part._id}`} className="mt-2 flex-1">
         <h3 className="line-clamp-2 font-bold leading-tight hover:text-brand-600 dark:hover:text-brand-400">{part.name}</h3>
         <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{part.brand}</p>
       </Link>

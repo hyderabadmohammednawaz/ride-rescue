@@ -139,7 +139,7 @@ export default function MechanicDashboard() {
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
             {data.activeJobs.map((job) => (
-              <Link key={job._id} href={`/mechanic/jobs/${job._id}`} className="card transition hover:border-brand-400 hover:shadow-md">
+              <Link key={job._id} href={`/mechanic/jobs/detail?id=${job._id}`} className="card transition hover:border-brand-400 hover:shadow-md">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-bold">

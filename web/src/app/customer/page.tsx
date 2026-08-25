@@ -89,7 +89,7 @@ export default function CustomerHome() {
           <SectionTitle title="Active request" subtitle="Tap to track your mechanic live" />
           <div className="grid gap-3 md:grid-cols-2">
             {active.map((b) => (
-              <Link key={b._id} href={`/customer/bookings/${b._id}`} className="card transition hover:border-brand-400 hover:shadow-md">
+              <Link key={b._id} href={`/customer/bookings/detail?id=${b._id}`} className="card transition hover:border-brand-400 hover:shadow-md">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold">
@@ -237,7 +237,7 @@ export default function CustomerHome() {
           />
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {recommended.map((p) => (
-              <Link key={p._id} href={`/customer/store/${p._id}`} className="card transition hover:border-brand-400 hover:shadow-md">
+              <Link key={p._id} href={`/customer/store/detail?id=${p._id}`} className="card transition hover:border-brand-400 hover:shadow-md">
                 <div className="flex items-start justify-between">
                   <span className="text-3xl">{p.image || '🔩'}</span>
                   <Stars value={p.ratingAverage} />
