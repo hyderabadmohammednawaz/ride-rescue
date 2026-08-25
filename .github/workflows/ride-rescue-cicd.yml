@@ -1,0 +1,177 @@
+name: RideRescue CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  selenium-web-tests:
+    name: Selenium Web Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run Selenium Tests
+        run: python Testing_Reports/web_selenium_tests.py
+      - name: Upload Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Selenium_Web_Tests
+          path: Testing_Reports/web_selenium_report.xlsx
+          if-no-files-found: ignore
+
+  appium-mobile-tests:
+    name: Appium Mobile Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run Appium Tests
+        run: python Testing_Reports/mobile_appium_tests.py
+      - name: Upload Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Appium_Mobile_Tests
+          path: Testing_Reports/mobile_appium_report.xlsx
+          if-no-files-found: ignore
+
+  load-tests:
+    name: Load Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run Load Tests
+        run: python Testing_Reports/web_load_tests.py
+      - name: Upload Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Load_Tests
+          path: Testing_Reports/web_load_report.xlsx
+          if-no-files-found: ignore
+
+  dast-security-tests:
+    name: DAST Security Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run DAST Tests
+        run: python Testing_Reports/Vulnerability_Testing_Tests.py
+      - name: Upload Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DAST_Security_Tests
+          path: Testing_Reports/web_security_report.xlsx
+          if-no-files-found: ignore
+
+  bundle-reports:
+    name: Bundle Reports
+    needs: [selenium-web-tests, appium-mobile-tests, load-tests, dast-security-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all reports
+        uses: actions/download-artifact@v4
+        with:
+          path: Testing_Reports
+      - name: Upload Bundled Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: Testing_Reports
+          path: Testing_Reports/
+
+  deploy-web:
+    name: Deploy Web
+    needs: bundle-reports
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          static_site_generator: next
+          
+      - name: Configure Next.js for Static Export
+        working-directory: web
+        run: |
+          sed -i 's/reactStrictMode: true,/reactStrictMode: true,\n  output: "export",/g' next.config.mjs
+          
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+        
+      - name: Build with Next.js
+        working-directory: web
+        run: npx next build
+        
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./web/out
+          
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  smoke-test:
+    name: Web Smoke Test
+    needs: deploy-web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Deployment Propagation
+        run: sleep 10
+      - name: Check Deployed URL
+        run: |
+          URL="${{ needs.deploy-web.outputs.page_url }}"
+          echo "Testing URL: $URL"
+          if [ -z "$URL" ]; then
+            echo "URL is empty, deployment might have failed to provide a URL."
+            exit 1
+          fi
+          # We perform a basic GET request and expect HTTP 200 OK
+          HTTP_STATUS=$(curl -o /dev/null -s -w "%{http_code}\n" "$URL")
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "Smoke test failed. HTTP Status: $HTTP_STATUS"
+            exit 1
+          else
+            echo "Smoke test passed. HTTP Status: $HTTP_STATUS"
+          fi
