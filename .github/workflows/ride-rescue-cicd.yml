@@ -139,6 +139,8 @@ jobs:
         
       - name: Build with Next.js
         working-directory: web
+        env:
+          NEXT_PUBLIC_API_URL: https://riderescue-api.onrender.com
         run: npx next build
         
       - name: Upload artifact
