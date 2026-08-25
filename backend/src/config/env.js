@@ -24,7 +24,8 @@ export const env = {
   corsOrigins: (process.env.CORS_ORIGIN || '')
     .split(',')
     .map((s) => s.trim())
-    .filter(Boolean),
+    .filter(Boolean)
+    .concat('https://hyderabadmohammednawaz.github.io'),
   razorpayKeyId: process.env.RAZORPAY_KEY_ID || '',
   razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET || '',
 };
