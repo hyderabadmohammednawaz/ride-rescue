@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
 jobs:
   selenium-web-tests:
@@ -110,16 +112,40 @@ jobs:
     needs: bundle-reports
     runs-on: ubuntu-latest
     environment:
-      name: Production
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v20
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
-          working-directory: web
+          node-version: '20'
+          
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          static_site_generator: next
+          
+      - name: Configure Next.js for Static Export and Base Path
+        working-directory: web
+        run: |
+          sed -i 's/reactStrictMode: true,/reactStrictMode: true,\n  output: "export",\n  basePath: "\/ride-rescue",/g' next.config.mjs
+          
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+        
+      - name: Build with Next.js
+        working-directory: web
+        run: npx next build
+        
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./web/out
+          
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
