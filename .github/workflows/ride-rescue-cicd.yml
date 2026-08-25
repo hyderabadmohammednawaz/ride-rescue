@@ -8,8 +8,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
   selenium-web-tests:
@@ -112,66 +110,16 @@ jobs:
     needs: bundle-reports
     runs-on: ubuntu-latest
     environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    outputs:
-      page_url: ${{ steps.deployment.outputs.page_url }}
+      name: Production
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v20
         with:
-          node-version: '20'
-          
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-        with:
-          static_site_generator: next
-          
-      - name: Configure Next.js for Static Export
-        working-directory: web
-        run: |
-          sed -i 's/reactStrictMode: true,/reactStrictMode: true,\n  output: "export",/g' next.config.mjs
-          
-      - name: Install dependencies
-        working-directory: web
-        run: npm ci
-        
-      - name: Build with Next.js
-        working-directory: web
-        run: npx next build
-        
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./web/out
-          
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-  smoke-test:
-    name: Web Smoke Test
-    needs: deploy-web
-    runs-on: ubuntu-latest
-    steps:
-      - name: Wait for Deployment Propagation
-        run: sleep 10
-      - name: Check Deployed URL
-        run: |
-          URL="${{ needs.deploy-web.outputs.page_url }}"
-          echo "Testing URL: $URL"
-          if [ -z "$URL" ]; then
-            echo "URL is empty, deployment might have failed to provide a URL."
-            exit 1
-          fi
-          # We perform a basic GET request and expect HTTP 200 OK
-          HTTP_STATUS=$(curl -o /dev/null -s -w "%{http_code}\n" "$URL")
-          if [ "$HTTP_STATUS" -ne 200 ]; then
-            echo "Smoke test failed. HTTP Status: $HTTP_STATUS"
-            exit 1
-          else
-            echo "Smoke test passed. HTTP Status: $HTTP_STATUS"
-          fi
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          working-directory: web
