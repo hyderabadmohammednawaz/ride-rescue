@@ -25,6 +25,9 @@ than canned responses.
 >
 > **New to the project, or not a programmer?** Start with **[NOTES.md](NOTES.md)** — it explains
 > everything from scratch, assuming no technical background.
+>
+> **Need the full technical listing?** See **[REFERENCE.md](REFERENCE.md)** — every library,
+> endpoint, screen, collection and environment variable.
 
 ## Table of contents
 
