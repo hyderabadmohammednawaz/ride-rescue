@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { api, formatDateTime, rupees } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useSocketEvent } from '@/lib/socket';
+import { useBookingRoom } from '@/lib/useBookingRoom';
 import { useToast } from '@/components/Toast';
 import MapView, { type MapMarker } from '@/components/MapView';
 import { BookingChat } from '@/components/BookingChat';
@@ -24,6 +25,10 @@ const STEPS: { key: string; label: string; icon: string }[] = [
 function TrackBookingContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get('id') as string;
+
+  // Live location and chat are broadcast to the booking's room; a page that
+  // listens without joining hears nothing.
+  useBookingRoom(id);
   const { user, refresh } = useAuth();
   const { push } = useToast();
   const [booking, setBooking] = useState<Booking | null>(null);
