@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RideRescue From Scratch</title>
+<style>
+  :root {
+    --paper:      #FBFAF8;
+    --panel:      #FFFFFF;
+    --ink:        #1A1A1C;
+    --ink-soft:   #55565C;
+    --ink-faint:  #85878E;
+    --rule:       #E4E2DD;
+    --rule-soft:  #EFEDE9;
+    --teal:       #16706B;
+    --teal-wash:  #E6F2F1;
+    --clay:       #B4551F;
+    --clay-wash:  #FBEFE6;
+    --serif: ui-serif, Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --sans:  ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono:  ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14161A; --panel: #1A1D22; --ink: #ECEAE6; --ink-soft: #A9ACB3;
+      --ink-faint: #7D8189; --rule: #2C3038; --rule-soft: #24272D;
+      --teal: #57BDB4; --teal-wash: #10231F; --clay: #E39463; --clay-wash: #241A14;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14161A; --panel: #1A1D22; --ink: #ECEAE6; --ink-soft: #A9ACB3;
+    --ink-faint: #7D8189; --rule: #2C3038; --rule-soft: #24272D;
+    --teal: #57BDB4; --teal-wash: #10231F; --clay: #E39463; --clay-wash: #241A14;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font-family: var(--serif); font-size: 18px; line-height: 1.7;
+    margin: 0; padding: 0 20px 100px; -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 680px; margin: 0 auto; }
+
+  header.top { padding: 56px 0 26px; }
+  .kicker {
+    font-family: var(--sans); font-size: 11px; font-weight: 700;
+    letter-spacing: .17em; text-transform: uppercase; color: var(--teal); margin: 0 0 14px;
+  }
+  h1 {
+    font-family: var(--sans); font-size: clamp(31px, 7.5vw, 47px); font-weight: 800;
+    letter-spacing: -.025em; line-height: 1.05; text-wrap: balance; margin: 0 0 16px;
+  }
+  .lede { font-size: 19px; color: var(--ink-soft); margin: 0; text-wrap: pretty; }
+
+  nav.toc {
+    margin: 32px 0 8px; background: var(--panel);
+    border: 1px solid var(--rule); border-radius: 4px; padding: 18px 20px 20px;
+  }
+  nav.toc h2 {
+    font-family: var(--sans); font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 700; margin: 0 0 12px;
+  }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; counter-reset: p; }
+  nav.toc li { counter-increment: p; }
+  nav.toc a {
+    font-family: var(--sans); font-size: 15px; color: var(--ink); text-decoration: none;
+    display: block; padding: 5px 0; border-bottom: 1px solid transparent;
+  }
+  nav.toc a::before {
+    content: counter(p); color: var(--teal); font-weight: 700; font-size: 12px;
+    margin-right: 10px; font-variant-numeric: tabular-nums;
+  }
+  nav.toc a:hover { border-bottom-color: var(--teal); }
+  nav.toc a:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+
+  section { padding-top: 46px; scroll-margin-top: 16px; }
+  h2.sec {
+    font-family: var(--sans); font-size: 24px; font-weight: 800; letter-spacing: -.014em;
+    line-height: 1.2; text-wrap: balance; margin: 0 0 8px; padding-bottom: 10px;
+    border-bottom: 2px solid var(--ink); display: flex; gap: 12px; align-items: baseline;
+  }
+  h2.sec .n {
+    font-size: 12px; font-weight: 700; color: var(--teal); flex: none;
+    font-variant-numeric: tabular-nums; letter-spacing: .04em;
+  }
+  h3 {
+    font-family: var(--sans); font-size: 17px; font-weight: 700; margin: 32px 0 8px;
+  }
+  h4 {
+    font-family: var(--sans); font-size: 15px; font-weight: 700; margin: 24px 0 6px;
+    color: var(--teal);
+  }
+  p { margin: 0 0 16px; text-wrap: pretty; }
+  strong { font-weight: 700; }
+  a { color: var(--teal); text-underline-offset: 2px; }
+  code {
+    font-family: var(--mono); font-size: .85em; background: var(--rule-soft);
+    padding: 1px 5px; border-radius: 3px;
+  }
+  ul, ol { padding-left: 22px; margin: 0 0 16px; }
+  li { margin-bottom: 8px; }
+
+  .note {
+    margin: 20px 0; padding: 16px 18px; background: var(--teal-wash);
+    border-left: 4px solid var(--teal); border-radius: 3px;
+    font-family: var(--sans); font-size: 15.5px; line-height: 1.6;
+  }
+  .note p:last-child { margin-bottom: 0; }
+  .note .tag {
+    display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .15em;
+    text-transform: uppercase; color: var(--teal); margin-bottom: 8px;
+  }
+
+  .warn {
+    margin: 20px 0; padding: 16px 18px; background: var(--clay-wash);
+    border-left: 4px solid var(--clay); border-radius: 3px;
+    font-family: var(--sans); font-size: 15.5px; line-height: 1.6;
+  }
+  .warn p:last-child { margin-bottom: 0; }
+  .warn .tag {
+    display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .15em;
+    text-transform: uppercase; color: var(--clay); margin-bottom: 8px;
+  }
+
+  .scroller { overflow-x: auto; margin: 20px 0; border: 1px solid var(--rule); border-radius: 4px; }
+  table { border-collapse: collapse; width: 100%; font-family: var(--sans); font-size: 14.5px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  thead th {
+    font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint);
+    font-weight: 700; background: var(--panel); border-bottom: 1px solid var(--rule); white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+
+  /* numbered walkthrough */
+  .step { display: flex; gap: 16px; margin: 26px 0; }
+  .step .num {
+    flex: none; width: 30px; height: 30px; border-radius: 50%;
+    background: var(--teal); color: var(--paper);
+    font-family: var(--sans); font-weight: 800; font-size: 14px;
+    display: flex; align-items: center; justify-content: center; margin-top: 3px;
+  }
+  .step .body { flex: 1; min-width: 0; }
+  .step h4 { margin: 2px 0 6px; color: var(--ink); font-size: 16px; }
+  .step p:last-child { margin-bottom: 0; }
+
+  dl.qa { margin: 0; }
+  dl.qa dt {
+    font-family: var(--sans); font-weight: 700; font-size: 16px; margin: 26px 0 6px;
+  }
+  dl.qa dd { margin: 0; color: var(--ink-soft); }
+
+  .closing {
+    margin: 46px 0 0; padding: 24px; background: var(--panel);
+    border: 2px solid var(--ink); border-radius: 4px;
+    font-size: 19px; text-wrap: pretty;
+  }
+  .closing p:last-child { margin-bottom: 0; }
+
+  footer {
+    margin-top: 52px; padding-top: 18px; border-top: 1px solid var(--rule);
+    font-family: var(--sans); font-size: 13px; color: var(--ink-faint);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="kicker">Starting from zero</p>
+  <h1>How RideRescue actually works</h1>
+  <p class="lede">Written for someone who has never programmed. Every term is explained the first time it appears, and each part builds on the one before — so read it in order.</p>
+</header>
+
+<nav class="toc">
+  <h2>What is covered</h2>
+  <ol>
+    <li><a href="#s1">The problem it solves</a></li>
+    <li><a href="#s2">How an app like this works</a></li>
+    <li><a href="#s3">The three apps</a></li>
+    <li><a href="#s4">The four kinds of people</a></li>
+    <li><a href="#s5">One complete story</a></li>
+    <li><a href="#s6">The technologies, one by one</a></li>
+    <li><a href="#s7">Where information is kept</a></li>
+    <li><a href="#s8">The “AI”, honestly</a></li>
+    <li><a href="#s9">How it stays safe</a></li>
+    <li><a href="#s10">Words you will hear</a></li>
+    <li><a href="#s11">Answers to likely questions</a></li>
+  </ol>
+</nav>
+
+<section id="s1">
+  <h2 class="sec"><span class="n">01</span> The problem it solves</h2>
+  <p>Imagine you are riding your scooter and it breaks down at the roadside. Today you would have to ring around for a mechanic's number, describe where you are badly over the phone, wait with no idea whether anyone is coming, and argue about the price afterwards.</p>
+  <p><strong>RideRescue turns that into one button.</strong> You press it, the app finds the nearest available mechanic automatically, and you watch them travel towards you on a map — the way you watch a food delivery.</p>
+  <p>It does two other things as well: you can <strong>book a service in advance</strong> rather than as an emergency, and you can <strong>buy spare parts</strong> from an online shop that delivers to you.</p>
+  <p>That is the whole product. Everything else here is <em>how</em> it works.</p>
+</section>
+
+<section id="s2">
+  <h2 class="sec"><span class="n">02</span> How an app like this works</h2>
+  <p>This is the most important idea in the project. Understand this part and the rest is detail.</p>
+  <p>Think of a <strong>restaurant</strong>:</p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Restaurant</th><th>Software</th><th>What it means</th></tr></thead>
+      <tbody>
+        <tr><td>The dining room</td><td><strong>Frontend</strong></td><td>What the customer sees and touches</td></tr>
+        <tr><td>The kitchen</td><td><strong>Backend</strong></td><td>Where the real work happens, out of sight</td></tr>
+        <tr><td>The pantry</td><td><strong>Database</strong></td><td>Where everything is stored</td></tr>
+        <tr><td>The waiter</td><td><strong>API</strong></td><td>Carries orders in and food back</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>You never walk into the kitchen.</strong> You tell the waiter what you want, the kitchen makes it, the waiter brings it back. You have no idea what happened in there — and you do not need to.</p>
+
+  <p>That separation is deliberate. It means the kitchen can be rebuilt without touching the dining room; one kitchen can serve several dining rooms — which is exactly what happens here, since RideRescue has a website <em>and</em> a phone app sharing one backend; and a customer cannot reach into the pantry and help themselves.</p>
+
+  <h3>The real words</h3>
+  <ul>
+    <li><strong>Frontend</strong> — the part on your screen: buttons, maps, text. Also called the <em>client</em>.</li>
+    <li><strong>Backend</strong> — a program running on a computer elsewhere that does the thinking and remembers things. Also called the <em>server</em>.</li>
+    <li><strong>Database</strong> — an organised store of information. Think filing cabinets.</li>
+    <li><strong>API</strong> — the list of things you are allowed to ask the backend to do. Like a menu: you can order what is on it, and nothing else.</li>
+  </ul>
+</section>
+
+<section id="s3">
+  <h2 class="sec"><span class="n">03</span> The three apps</h2>
+  <p>RideRescue is not one program but three, all talking to the same backend.</p>
+  <h4>1. The website</h4>
+  <p>Works in any browser. Used by all four kinds of people, and the only place the admin and shop owners work.</p>
+  <h4>2. The Android app</h4>
+  <p>Installed on a phone, used by customers and mechanics. It exists because a phone can do things a website cannot do well: know your exact position by GPS, and stay open in your hand while you ride.</p>
+  <h4>3. The backend</h4>
+  <p>You never see this one. It runs on the internet day and night, answers questions from both the website and the phone app, and is the only thing allowed to touch the database.</p>
+  <div class="note">
+    <span class="tag">Why not one app?</span>
+    <p>A website cannot reliably use a phone's GPS while the screen is off, and a phone is a poor place to read a large table of business figures. Each one does what it is good at.</p>
+  </div>
+</section>
+
+<section id="s4">
+  <h2 class="sec"><span class="n">04</span> The four kinds of people</h2>
+  <p>The project calls these <strong>roles</strong>. Your role decides what you may see and do.</p>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Role</th><th>What they do</th></tr></thead>
+      <tbody>
+        <tr><td>🧑 <strong>Customer</strong></td><td>The rider. Presses the emergency button, books services, tracks the mechanic, buys parts, pays.</td></tr>
+        <tr><td>🔧 <strong>Mechanic</strong></td><td>Receives jobs, travels to the customer, does the repair, gets paid.</td></tr>
+        <tr><td>🏪 <strong>Vendor</strong></td><td>A spare parts shop. Lists parts, manages stock, fulfils orders.</td></tr>
+        <tr><td>🛡️ <strong>Admin</strong></td><td>Runs the platform. Sees every user, booking and payment, and can block someone.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>Everyone uses the same app</strong>, and it looks completely different depending on who you are. A customer sees an emergency button; a mechanic sees a list of jobs. That is the role deciding what to show.</p>
+</section>
+
+<section id="s5">
+  <h2 class="sec"><span class="n">05</span> One complete story</h2>
+  <p>This is the demo. Follow it slowly — it ties everything together. Nawaz's scooter has broken down. Basha is a mechanic about a kilometre away with his app open and marked available.</p>
+
+  <div class="step">
+    <div class="num">1</div>
+    <div class="body">
+      <h4>Nawaz presses SOS</h4>
+      <p>He presses and holds the big red button for two seconds. <em>Why hold it?</em> So it cannot be triggered by accident in a pocket — sending a real mechanic to the wrong place wastes their fuel and time.</p>
+      <p>His phone reads its GPS position — two numbers describing exactly where he is on Earth — and sends them to the backend along with “emergency, this is my bike”.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="num">2</div>
+    <div class="body">
+      <h4>The backend finds the best mechanic</h4>
+      <p>It asks the database: <em>which mechanics are available and within 20 kilometres of this spot?</em> The database answers quickly because it stores locations in a special way built for that question.</p>
+      <p>Say four come back. Each gets a score out of 1, built from five things:</p>
+    </div>
+  </div>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>What is measured</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>How far away they are</td><td>The biggest factor in an emergency</td></tr>
+        <tr><td>Their star rating</td><td>Past customers' opinion</td></tr>
+        <tr><td>Whether they are free now</td><td>Someone mid-job will be slower</td></tr>
+        <tr><td>Years of experience</td><td>A harder repair needs a better mechanic</td></tr>
+        <tr><td>How many jobs they have</td><td>Do not overload one person</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>The highest score wins. In a real booking on the live system, Basha scored <strong>0.7674</strong> and was assigned in <strong>under one second</strong>. The system also records <em>why</em>, in plain English: “Only 0.4 km away · 5 years experience · Free right now.” A system that shows its reasoning is far easier to defend than one that says “trust me”.</p>
+
+  <div class="step">
+    <div class="num">3</div>
+    <div class="body">
+      <h4>Basha's phone lights up</h4>
+      <p>The job appears instantly — not because his phone keeps asking “any jobs? any jobs?”, but because of a <strong>socket</strong>: think of it as a phone line that stays open, so either side can speak the moment they have something to say. He taps <strong>Accept</strong>.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="num">4</div>
+    <div class="body">
+      <h4>Nawaz watches him coming</h4>
+      <p>The map shows two markers: a <strong>red teardrop pin</strong> for Nawaz (marked <strong>C</strong>) and a <strong>blue circle</strong> for Basha (marked <strong>M</strong>). As Basha rides, his phone sends its position every few seconds; the backend works out the distance and arrival time and pushes both to Nawaz's screen. The blue marker moves, the ETA counts down.</p>
+    </div>
+  </div>
+
+  <div class="warn">
+    <span class="tag">Say this before you are asked</span>
+    <p>The distance is measured in a <strong>straight line</strong>, not along the roads. Real road distance needs a separate mapping service. It is the obvious next improvement, and naming it yourself looks far better than being caught out.</p>
+  </div>
+
+  <div class="step">
+    <div class="num">5</div>
+    <div class="body">
+      <h4>Basha arrives — and proves it is really him</h4>
+      <p>Here is a problem worth thinking about: how do you stop a dishonest mechanic marking a job “done” without doing anything, and charging for it?</p>
+      <p>The answer: when the job is created the system makes a <strong>four-digit code</strong> and shows it only to the customer. The mechanic cannot start work until the customer reads it out and he types it in. That single step means he must physically be standing next to the customer. No code, no job, no payment.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="num">6</div>
+    <div class="body">
+      <h4>The work happens, then payment</h4>
+      <p>The bill is calculated <strong>on the backend</strong>, never on the phone. If the phone worked out the price, someone could tamper with their own phone and pay ₹1 instead of ₹799. Because the backend calculates it, the phone's opinion about price is simply ignored.</p>
+      <p>Nawaz pays through <strong>Razorpay</strong>, a real Indian payment company. Razorpay's own secure screen opens, so RideRescue never sees his card details — they are typed into Razorpay's page, not ours.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="num">7</div>
+    <div class="body">
+      <h4>Rating</h4>
+      <p>Nawaz gives Basha a star rating, which feeds back into the scoring in step 2 — so good mechanics get more work over time.</p>
+    </div>
+  </div>
+
+  <p><strong>That is the entire flow.</strong> Everything else in the app supports it.</p>
+</section>
+
+<section id="s6">
+  <h2 class="sec"><span class="n">06</span> The technologies, one by one</h2>
+
+  <h4>JavaScript</h4>
+  <p>The programming language everything is written in. Browsers understand it, and it can also run on servers — which is why the project uses one language rather than two.</p>
+
+  <h4>Node.js</h4>
+  <p>Lets JavaScript run on a server instead of only in a browser. Without it the backend would need a different language.</p>
+
+  <h4>Express</h4>
+  <p>A helper that makes it easy to say <em>“when someone asks for this, do that”</em>. Those addresses — <code>/api/bookings</code>, <code>/api/payments</code> — are called <strong>endpoints</strong>. RideRescue has thirteen groups of them.</p>
+
+  <h4>MongoDB</h4>
+  <p>The database, where information lives permanently. Switch the server off and on and everything is still there. <em>Why this one?</em> Because of the question the app asks constantly — <em>who is near me?</em> — which MongoDB answers directly and quickly.</p>
+
+  <h4>Socket.IO</h4>
+  <p>The phone line that stays open. Normally the internet works like posting letters: ask a question, get an answer, connection closes. That is useless for live tracking — you would have to keep asking “where is he now?” every three seconds. A socket keeps the line open so the server can speak first. Used here for live location, chat, and notifications.</p>
+
+  <h4>Next.js and React</h4>
+  <p>What the website is built with. React builds screens out of reusable pieces; Next.js adds page organisation and speed.</p>
+
+  <h4>React Native and Expo</h4>
+  <p>What the Android app is built with. The clever part: you write the phone app in the same language and style as the website instead of learning a separate one.</p>
+
+  <h4>Firebase</h4>
+  <p>Google's service, used for one job — <strong>sending the OTP</strong>, the six-digit code you get by text when signing up.</p>
+
+  <div class="note">
+    <span class="tag">Why not send the text ourselves?</span>
+    <p>In India, sending commercial SMS legally requires registering with the telecom regulator as a business, which a student project cannot do. Firebase sidesteps it because <strong>Google</strong> is the registered sender, not us.</p>
+  </div>
+
+  <h4>Razorpay</h4>
+  <p>The payment company, used in <strong>test mode</strong> — free, behaves exactly like the real thing, but no actual money moves.</p>
+</section>
+
+<section id="s7">
+  <h2 class="sec"><span class="n">07</span> Where information is kept</h2>
+  <p>The database holds twelve <strong>collections</strong>. A collection is one filing cabinet; each item in it is one document — one person, one booking, one payment.</p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Collection</th><th>What is in it</th></tr></thead>
+      <tbody>
+        <tr><td><strong>User</strong></td><td>Every person, their role, location and bikes</td></tr>
+        <tr><td><strong>Booking</strong></td><td>Every job: who, which mechanic, status, price</td></tr>
+        <tr><td><strong>ServiceType</strong></td><td>The menu of services offered</td></tr>
+        <tr><td><strong>SparePart</strong></td><td>Every item in the shop</td></tr>
+        <tr><td><strong>Order</strong></td><td>Every parts purchase</td></tr>
+        <tr><td><strong>Payment</strong></td><td>Every payment attempt, successful or not</td></tr>
+        <tr><td><strong>Review</strong></td><td>Star ratings customers leave</td></tr>
+        <tr><td><strong>Message</strong></td><td>Chat between customer and mechanic</td></tr>
+        <tr><td><strong>Notification</strong></td><td>Alerts in the bell icon</td></tr>
+        <tr><td><strong>Complaint</strong></td><td>Problems raised for the admin</td></tr>
+        <tr><td><strong>Coupon</strong></td><td>Discount codes</td></tr>
+        <tr><td><strong>Otp</strong></td><td>Temporary sign-up codes, auto-deleted when expired</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>The one clever bit</h3>
+  <p>An <strong>index</strong> is like the index at the back of a textbook. Without it, finding a topic means reading every page; with it you jump straight there.</p>
+  <p>RideRescue puts a special index on people's locations, called a <strong>2dsphere index</strong>. “2dsphere” means it understands the Earth is a ball, not a flat sheet, so distances come out right. This is what makes <em>“find available mechanics within 20 km, nearest first”</em> fast even with many users.</p>
+
+  <div class="warn">
+    <span class="tag">The classic mistake</span>
+    <p>Locations are stored as <code>[longitude, latitude]</code> — in that order. Everyone says “latitude and longitude” out loud, so the reversed order catches people constantly. Get it backwards and your mechanic appears in the sea.</p>
+  </div>
+</section>
+
+<section id="s8">
+  <h2 class="sec"><span class="n">08</span> The “AI”, honestly</h2>
+  <div class="note">
+    <span class="tag">The honest framing</span>
+    <p>These are <strong>not neural networks</strong>. They are scoring systems built from clear rules — and that was a deliberate choice.</p>
+  </div>
+
+  <p><strong>Why rules instead of a learned model?</strong></p>
+  <ol>
+    <li><strong>A learned model needs training data.</strong> Teaching a computer to pick good mechanics would need thousands of past bookings with known outcomes. A new project has none.</li>
+    <li><strong>You can explain a rule.</strong> The app can say “chosen because 0.4 km away and free right now”. A neural network cannot tell you why it decided anything.</li>
+    <li><strong>It works from day one</strong>, with no waiting and no data collection.</li>
+  </ol>
+  <p>Saying this yourself is far stronger than being caught out by it.</p>
+
+  <h3>The four features</h3>
+  <p><strong>1. Mechanic matching</strong> — the scoring from step 2. The weights <em>change</em> for an emergency: distance jumps from 32% to 50% of the decision, because when you are stranded, who arrives soonest matters more than who has the best reviews.</p>
+  <p><strong>2. Parts recommendation</strong> — suggests parts that fit <em>your specific bike</em>, based on your make and model and what similar bikes have needed.</p>
+  <p><strong>3. Predictive maintenance</strong> — predicts when each part is due, using two measures and taking whichever comes first: <strong>distance ridden</strong> and <strong>time passed</strong>. That mirrors how manufacturers write real service schedules — “every 3,000 km or 6 months, whichever is sooner”.</p>
+  <p><strong>4. Chatbot</strong> — works out which of nine topics you mean, then <strong>looks up your real data</strong>. Ask “where is my mechanic” and it gives the actual current ETA, not a canned reply.</p>
+</section>
+
+<section id="s9">
+  <h2 class="sec"><span class="n">09</span> How it stays safe</h2>
+  <p>“Is it secure?” is a guaranteed question, so each of these is worth understanding.</p>
+
+  <p><strong>Passwords are never stored.</strong> Your password goes through a one-way scrambler called <strong>bcrypt</strong> and only the scrambled result is kept. Scrambling is one-way — it cannot be reversed. At login your typed password is scrambled again and the two are compared. Even someone who steals the whole database cannot read anyone's password.</p>
+
+  <p><strong>Logging in gives you a token.</strong> The server hands your app a signed pass called a <strong>JWT</strong>, shown with every later request — like a wristband at a festival. It is signed so it cannot be forged, and it expires after seven days.</p>
+
+  <p><strong>Your role limits what you can reach.</strong> A customer's token simply cannot open the admin pages, and the server checks on every single request.</p>
+
+  <div class="note">
+    <span class="tag">The best point to make</span>
+    <p><strong>Having the right role is not enough.</strong> A customer cannot read <em>another</em> customer's booking, even though both are customers — the server also checks the booking is actually yours. That distinction, <em>role</em> versus <em>ownership</em>, is the strongest security point in the project.</p>
+  </div>
+
+  <p><strong>Your phone number is proved, not claimed.</strong> Anyone can type any number into a form, so the app never trusts it. Firebase sends the code, checks it, and returns a signed certificate that the number is yours; the backend verifies that signature before creating the account.</p>
+
+  <p><strong>Payments are verified with maths.</strong> When Razorpay reports “this was paid” it includes a <strong>signature</strong> that could only be produced by someone holding our secret key. The backend recalculates it and compares. A fake “I paid, honest” message from a phone is rejected.</p>
+
+  <p><strong>Prices are always recalculated on the server</strong>, so the phone's opinion about money is ignored entirely.</p>
+
+  <h3>Being honest about the weaknesses</h3>
+  <p>Naming your own limitations makes you look like an engineer; being caught out by them does the opposite.</p>
+  <ul>
+    <li>The login token is stored where the browser's JavaScript can read it. A stricter method exists but complicates the phone app.</li>
+    <li>There is no limit on login attempts, so someone could keep guessing passwords. A standard tool fixes this and would be the first thing to add.</li>
+  </ul>
+</section>
+
+<section id="s10">
+  <h2 class="sec"><span class="n">10</span> Words you will hear</h2>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Word</th><th>Plain meaning</th></tr></thead>
+      <tbody>
+        <tr><td>Frontend / client</td><td>The part you see and touch</td></tr>
+        <tr><td>Backend / server</td><td>The program doing the work, elsewhere</td></tr>
+        <tr><td>Database</td><td>Where information is stored permanently</td></tr>
+        <tr><td>API</td><td>The list of things you may ask the backend to do</td></tr>
+        <tr><td>Endpoint</td><td>One specific thing you can ask for</td></tr>
+        <tr><td>Request / response</td><td>Asking the backend something / its answer</td></tr>
+        <tr><td>Deploy</td><td>Put it on the internet so anyone can use it</td></tr>
+        <tr><td>Repository</td><td>The folder holding all the code, with its history</td></tr>
+        <tr><td>Commit</td><td>One saved change, with a note explaining it</td></tr>
+        <tr><td>JWT / token</td><td>Your proof of being logged in</td></tr>
+        <tr><td>Socket</td><td>A connection that stays open so the server can speak first</td></tr>
+        <tr><td>Index</td><td>A shortcut that makes searching fast</td></tr>
+        <tr><td>Collection</td><td>One filing cabinet in the database</td></tr>
+        <tr><td>OTP</td><td>The one-time code sent by text</td></tr>
+        <tr><td>Geospatial</td><td>To do with positions on Earth</td></tr>
+        <tr><td>Latitude / longitude</td><td>How far north–south / east–west</td></tr>
+        <tr><td>ETA</td><td>Estimated time of arrival</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="s11">
+  <h2 class="sec"><span class="n">11</span> Answers to likely questions</h2>
+  <dl class="qa">
+    <dt>What is this project?</dt>
+    <dd>An app that connects a stranded two-wheeler rider with the nearest available mechanic, tracks that mechanic live on a map, and sells spare parts alongside it.</dd>
+
+    <dt>Who uses it?</dt>
+    <dd>Four kinds of people — customers, mechanics, spare parts vendors and an administrator. Each sees a completely different app.</dd>
+
+    <dt>How does it find the nearest mechanic?</dt>
+    <dd>The database stores everyone's position with a special index for location questions, so it can quickly find mechanics within 20 km. Those are then scored on distance, rating, availability, experience and current workload, and the best one is assigned.</dd>
+
+    <dt>How does live tracking work?</dt>
+    <dd>The mechanic's phone sends its position every few seconds over a connection that stays open, so the customer's map updates immediately rather than the app having to keep asking.</dd>
+
+    <dt>Is it really AI?</dt>
+    <dd>It is an explainable scoring system rather than a neural network — deliberately. It can justify every decision in words and works without training data. A learned model would be the next step once there are enough completed bookings to learn from.</dd>
+
+    <dt>Is it secure?</dt>
+    <dd>Passwords are scrambled one-way and never stored. Logging in gives a signed token that expires. Your role limits what you can reach, and separately, you can only see records that are actually yours. Payments are verified by a cryptographic signature and prices are always recalculated on the server.</dd>
+
+    <dt>What would you improve?</dt>
+    <dd>Real road distances instead of straight lines, a limit on login attempts, and a learned ranking model once there is enough real booking data to train one.</dd>
+  </dl>
+</section>
+
+<div class="closing">
+  <p><strong>If you remember nothing else:</strong></p>
+  <p>The phone and the website are just screens. The <strong>backend</strong> does the thinking and the <strong>database</strong> does the remembering. Everything the app does is one of those three, talking to the other two.</p>
+</div>
+
+<footer>
+  Written for RideRescue — a final-year project. Figures quoted, including the 0.7674 match score, are from real records on the live system.
+</footer>
+
+</div>
+</body>
+</html>

@@ -22,6 +22,9 @@ than canned responses.
 > be copied by hand; `git clone` alone leaves you with a project that will not start.
 >
 > **Preparing for the viva?** See **[VIVA.md](VIVA.md)**.
+>
+> **New to the project, or not a programmer?** Start with **[NOTES.md](NOTES.md)** — it explains
+> everything from scratch, assuming no technical background.
 
 ## Table of contents
 
