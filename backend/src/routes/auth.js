@@ -12,6 +12,7 @@ import {
   verifyPhoneToken,
 } from '../services/firebaseAdmin.js';
 import { gatewayLive } from '../services/razorpay.js';
+import { notify } from '../services/notifications.js';
 
 const router = express.Router();
 
@@ -283,6 +284,58 @@ router.post(
       token: signToken(user),
       user: user.toSafeJSON(),
     });
+  })
+);
+
+/**
+ * POST /api/auth/phone/reset-password — set a new password after proving the number.
+ *
+ * The email reset path cannot work on a deployed server: DEV_MODE is off, so the
+ * code is written only to the server log and no mail provider is configured. A
+ * user is told "an OTP has been sent", waits for something that never arrives,
+ * and is locked out permanently.
+ *
+ * Firebase already proves ownership of a number for sign-up and sign-in, and
+ * that same proof is exactly what a password reset needs — the token's signature
+ * is what establishes the caller controls the number, not their say-so.
+ */
+router.post(
+  '/phone/reset-password',
+  asyncRoute(async (req, res) => {
+    const { idToken, newPassword } = req.body;
+    if (!newPassword || newPassword.length < 6) throw badRequest('Password must be at least 6 characters');
+
+    const { phone, uid } = await verifyPhoneToken(idToken).catch((err) => {
+      throw badRequest(err.message);
+    });
+    const phoneKey = normalisePhone(phone);
+
+    const user = await User.findOne({ $or: [{ firebaseUid: uid }, { phoneKey }] });
+    if (!user) {
+      return res.status(404).json({
+        message: 'No account uses that mobile number.',
+        needsRegistration: true,
+        phone,
+      });
+    }
+    if (user.isBlocked) throw badRequest('This account has been blocked. Contact support.');
+
+    await user.setPassword(newPassword);
+    // Someone who can receive the SMS has proven the number, so an account still
+    // pending email verification is verified by this too.
+    user.phoneVerified = true;
+    user.isVerified = true;
+    if (!user.firebaseUid) user.firebaseUid = uid;
+    if (!user.phoneKey) user.phoneKey = phoneKey;
+    await user.save();
+
+    await notify(user._id, {
+      title: 'Password changed',
+      body: 'Your password was reset using your mobile number. If this was not you, contact support.',
+      type: 'system',
+    });
+
+    res.json({ message: 'Password updated', token: signToken(user), user: user.toSafeJSON() });
   })
 );
 
