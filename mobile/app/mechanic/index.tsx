@@ -148,6 +148,18 @@ export default function MechanicHome() {
         </Pressable>
       </View>
 
+      {/* Being offline is invisible from the job list — it just looks quiet.
+          Say so plainly, because a mechanic can otherwise sit unavailable for
+          days wondering why no work arrives. */}
+      {!data.isAvailable && (
+        <Pressable onPress={() => toggleAvailability(true)} style={styles.offlineBanner}>
+          <Text style={styles.offlineTitle}>⚠️  You are offline</Text>
+          <Text style={styles.offlineBody}>
+            Customers cannot see you and no jobs will be sent to you. Tap here to go online.
+          </Text>
+        </Pressable>
+      )}
+
       <Card style={{ marginBottom: 14 }}>
         <View style={styles.toggleRow}>
           <View style={{ flex: 1 }}>
@@ -248,6 +260,16 @@ const styles = StyleSheet.create({
   logout: { color: colors.brand, fontWeight: '700', fontSize: 13 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   toggleLabel: { fontSize: 14, fontWeight: '700', color: colors.text },
+  offlineBanner: {
+    backgroundColor: colors.warnLight,
+    borderWidth: 1,
+    borderColor: colors.warn,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
+  },
+  offlineTitle: { fontSize: 15, fontWeight: '800', color: '#92400e' },
+  offlineBody: { fontSize: 13, color: '#92400e', marginTop: 4, lineHeight: 18 },
   tiles: { flexDirection: 'row', gap: 10 },
   sectionHeading: { fontSize: 16, fontWeight: '800', color: colors.text, marginTop: 22, marginBottom: 10 },
   jobHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 6 },

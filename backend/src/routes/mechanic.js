@@ -1,7 +1,7 @@
 import express from 'express';
 import { Booking } from '../models/Booking.js';
 import { Review } from '../models/Review.js';
-import { asyncRoute } from '../middleware/errors.js';
+import { asyncRoute, badRequest } from '../middleware/errors.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -25,7 +25,11 @@ router.get(
     ]);
 
     res.json({
-      isAvailable: req.user.mechanicProfile?.isAvailable ?? true,
+      // Report what is stored, not an optimistic default. Dispatch matches on
+      // `mechanicProfile.isAvailable: true` exactly, so a missing field means
+      // invisible — and reporting `?? true` told the mechanic they were online
+      // while no job could ever reach them.
+      isAvailable: req.user.mechanicProfile?.isAvailable === true,
       activeJobs: active,
       stats: {
         todayJobs,
@@ -44,7 +48,18 @@ router.get(
 router.patch(
   '/availability',
   asyncRoute(async (req, res) => {
-    req.user.mechanicProfile.isAvailable = Boolean(req.body.isAvailable);
+    // Require an explicit boolean. Boolean(req.body.isAvailable) turned a
+    // missing, misspelled or malformed field into `false`, so a bad request
+    // quietly took a mechanic off the map — the one state change nobody would
+    // think to check for.
+    if (typeof req.body.isAvailable !== 'boolean') {
+      throw badRequest('isAvailable must be true or false');
+    }
+
+    // Registration sets this, but an account created before the field existed
+    // would have no mechanicProfile at all.
+    if (!req.user.mechanicProfile) req.user.mechanicProfile = {};
+    req.user.mechanicProfile.isAvailable = req.body.isAvailable;
     await req.user.save();
     res.json({ isAvailable: req.user.mechanicProfile.isAvailable });
   })
