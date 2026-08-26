@@ -53,7 +53,10 @@ export function SosButton({ onDispatched }: { onDispatched?: (booking: Booking) 
         'success'
       );
       onDispatched?.(res.booking);
-      router.push(`/customer/bookings/${res.booking._id}`);
+      // The id goes in the query string, not the path: a static export has to
+      // know every page at build time, and booking ids do not exist until
+      // someone books.
+      router.push(`/customer/bookings/detail?id=${res.booking._id}`);
     } catch (err: any) {
       push(err.message, 'error');
     } finally {
