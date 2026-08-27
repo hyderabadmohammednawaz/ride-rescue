@@ -8,6 +8,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { orderReference } from '../utils/ids.js';
 import { notify, notifyMany } from '../services/notifications.js';
 import { emitToUser } from '../realtime/hub.js';
+import { orderLink } from '../services/links.js';
 
 const router = express.Router();
 router.use(requireAuth);
@@ -130,7 +131,7 @@ router.post(
     });
     order.vendors.forEach((v) => emitToUser(v, 'order:new', order.toObject()));
 
-    await notify(req.user._id, { title: 'Order placed', body: `${order.reference} — ₹${order.total}`, type: 'order', link: `/customer/orders/${order._id}` });
+    await notify(req.user._id, { title: 'Order placed', body: `${order.reference} — ₹${order.total}`, type: 'order', link: orderLink() });
 
     res.status(201).json({ order });
   })
@@ -221,7 +222,7 @@ router.patch(
       title: titles[status],
       body: `${order.reference}${note ? ` — ${note}` : ''}`,
       type: 'order',
-      link: `/customer/orders/${order._id}`,
+      link: orderLink(),
     });
     emitToUser(order.customer, 'order:updated', order.toObject());
 

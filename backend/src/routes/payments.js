@@ -10,6 +10,7 @@ import { paymentReference } from '../utils/ids.js';
 import { notify } from '../services/notifications.js';
 import { emitToUser } from '../realtime/hub.js';
 import { createOrder, gatewayLive, verifySignature } from '../services/razorpay.js';
+import { jobLink } from '../services/links.js';
 
 const router = express.Router();
 router.use(requireAuth);
@@ -166,7 +167,7 @@ router.post(
           title: 'Payment received',
           body: `₹${payment.amount} for ${booking.reference}`,
           type: 'payment',
-          link: `/mechanic/jobs/${booking._id}`,
+          link: jobLink(booking._id),
         });
         emitToUser(booking.mechanic, 'booking:paid', { bookingId: booking._id, amount: payment.amount });
       }

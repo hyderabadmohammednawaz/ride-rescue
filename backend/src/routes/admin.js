@@ -15,6 +15,7 @@ import { rankMechanics } from '../services/ai/mechanicMatch.js';
 import { notify } from '../services/notifications.js';
 import { emitToUser } from '../realtime/hub.js';
 import { distanceKm, etaMinutes } from '../utils/geo.js';
+import { bookingLink, jobLink } from '../services/links.js';
 
 const router = express.Router();
 router.use(requireAuth, requireRole('admin'));
@@ -251,8 +252,8 @@ router.post(
       .populate('mechanic', 'name phone avatarColor mechanicProfile')
       .populate('serviceType', 'name icon');
 
-    await notify(mechanic._id, { title: 'Job assigned by admin', body: `${saved.customer.name} — ${booking.distanceKm} km away`, type: 'booking', link: `/mechanic/jobs/${booking._id}` });
-    await notify(booking.customer, { title: 'Mechanic assigned', body: `${mechanic.name} — ETA ${booking.etaMinutes} min`, type: 'booking', link: `/customer/bookings/${booking._id}` });
+    await notify(mechanic._id, { title: 'Job assigned by admin', body: `${saved.customer.name} — ${booking.distanceKm} km away`, type: 'booking', link: jobLink(booking._id) });
+    await notify(booking.customer, { title: 'Mechanic assigned', body: `${mechanic.name} — ETA ${booking.etaMinutes} min`, type: 'booking', link: bookingLink(booking._id) });
     emitToUser(mechanic._id, 'booking:assigned', saved);
     emitToUser(booking.customer, 'booking:updated', saved);
 

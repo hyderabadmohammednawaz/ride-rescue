@@ -12,6 +12,7 @@ import { rankMechanics } from '../services/ai/mechanicMatch.js';
 import { partsForService } from '../services/ai/partsRecommender.js';
 import { notify } from '../services/notifications.js';
 import { emitToBooking, emitToMechanics, emitToUser } from '../realtime/hub.js';
+import { bookingLink, jobLink } from '../services/links.js';
 
 const router = express.Router();
 router.use(requireAuth);
@@ -200,7 +201,7 @@ router.post(
         title: kind === 'sos' ? '🚨 Emergency job assigned' : 'New job assigned',
         body: `${req.user.name} — ${service.name} · ${booking.distanceKm} km away`,
         type: kind === 'sos' ? 'sos' : 'booking',
-        link: `/mechanic/jobs/${booking._id}`,
+        link: jobLink(booking._id),
         meta: { bookingId: booking._id },
       });
       emitToUser(booking.mechanic, 'booking:assigned', saved);
@@ -208,7 +209,7 @@ router.post(
         title: 'Mechanic assigned',
         body: `${saved.mechanic.name} is on the way — ETA ${booking.etaMinutes} min`,
         type: 'booking',
-        link: `/customer/bookings/${booking._id}`,
+        link: bookingLink(booking._id),
       });
     } else {
       emitToMechanics('booking:new', saved);
@@ -216,7 +217,7 @@ router.post(
         title: 'Booking created',
         body: `We are finding a mechanic for ${booking.reference}`,
         type: 'booking',
-        link: `/customer/bookings/${booking._id}`,
+        link: bookingLink(booking._id),
       });
     }
 
@@ -277,7 +278,7 @@ router.post(
       title: 'Mechanic accepted your request',
       body: `${req.user.name} is on the way — ETA ${booking.etaMinutes} min`,
       type: 'booking',
-      link: `/customer/bookings/${booking._id}`,
+      link: bookingLink(booking._id),
     });
     emitToUser(booking.customer, 'booking:updated', saved);
     emitToBooking(booking._id, 'booking:updated', saved);
@@ -318,7 +319,7 @@ router.post(
 
     const saved = await populateBooking(Booking.findById(booking._id));
     if (booking.mechanic) {
-      await notify(booking.mechanic, { title: 'New job assigned', body: `${saved.customer.name} — ${booking.distanceKm} km away`, type: 'booking', link: `/mechanic/jobs/${booking._id}` });
+      await notify(booking.mechanic, { title: 'New job assigned', body: `${saved.customer.name} — ${booking.distanceKm} km away`, type: 'booking', link: jobLink(booking._id) });
       emitToUser(booking.mechanic, 'booking:assigned', saved);
     } else {
       emitToMechanics('booking:new', saved);
@@ -383,7 +384,7 @@ router.patch(
       title: titles[status] || 'Booking updated',
       body: status === 'completed' ? `Total ₹${booking.charges.total}. Please complete payment.` : note || '',
       type: 'booking',
-      link: `/customer/bookings/${booking._id}`,
+      link: bookingLink(booking._id),
     });
     emitToUser(booking.customer, 'booking:updated', saved);
     emitToBooking(booking._id, 'booking:updated', saved);
