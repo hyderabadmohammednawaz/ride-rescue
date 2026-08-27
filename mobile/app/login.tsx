@@ -150,6 +150,10 @@ export default function LoginScreen() {
 
           </Card>
 
+          <Pressable onPress={() => router.push('/forgot-password')} style={{ marginTop: 14 }}>
+            <Text style={styles.forgot}>Forgot password?</Text>
+          </Pressable>
+
           <Pressable onPress={() => router.push('/register')} style={styles.signupRow}>
             <Text style={styles.signupText}>
               New here? <Text style={styles.signupLink}>Create an account</Text>
@@ -167,6 +171,7 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
+  forgot: { textAlign: 'center', color: colors.brand, fontWeight: '700', fontSize: 13.5 },
   safe: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: 20, paddingTop: 48, paddingBottom: 40 },
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },

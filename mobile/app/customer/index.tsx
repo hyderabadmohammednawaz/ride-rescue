@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { api, rupees } from '../../lib/api';
@@ -27,6 +27,8 @@ interface NearbyMechanic {
   name: string;
   coordinates: [number, number];
   rating: number;
+  ratingCount: number;
+  experienceYears: number;
   distanceKm: number;
   etaMinutes: number;
   reasons: string[];
@@ -53,13 +55,19 @@ export default function CustomerHome() {
   const [sending, setSending] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
 
+  // Non-null while the mechanic picker is open, holding the service being booked.
+  const [picking, setPicking] = useState<ServiceType | null>(null);
+  const [chosenMechanic, setChosenMechanic] = useState('');
+  const [sort, setSort] = useState<'best' | 'rating'>('best');
+  const [bookingBusy, setBookingBusy] = useState(false);
+
   const holdTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const holdStart = useRef(0);
 
   const load = useCallback(async () => {
     const results = await Promise.allSettled([
       api<{ services: ServiceType[] }>('/services'),
-      api<{ mechanics: NearbyMechanic[] }>('/services/mechanics/nearby?limit=5'),
+      api<{ mechanics: NearbyMechanic[] }>('/services/mechanics/nearby?limit=8'),
       api<{ bookings: Booking[] }>('/bookings?status=pending,accepted,arrived,in_progress'),
     ]);
     if (results[0].status === 'fulfilled') setServices(results[0].value.services);
@@ -142,11 +150,27 @@ export default function CustomerHome() {
     }, 50);
   };
 
-  const bookService = async (service: ServiceType) => {
+  /**
+   * Tapping a service opens the picker rather than booking immediately. For
+   * planned work the customer may want the best rated mechanic rather than the
+   * closest, and that is their call — an SOS never comes through here.
+   */
+  const startBooking = (service: ServiceType) => {
     if (!user?.vehicles?.length) {
       Alert.alert('Add a vehicle first', 'Add your bike under My bikes & profile before booking a service.');
       return;
     }
+    setPicking(service);
+    setChosenMechanic('');
+    setSort('best');
+  };
+
+  const bookService = async (service: ServiceType, mechanicId?: string) => {
+    if (!user?.vehicles?.length) {
+      Alert.alert('Add a vehicle first', 'Add your bike under My bikes & profile before booking a service.');
+      return;
+    }
+    setBookingBusy(true);
     try {
       let coordinates: [number, number] | undefined;
       try {
@@ -159,15 +183,31 @@ export default function CustomerHome() {
       }
       const { booking } = await api<{ booking: Booking }>('/bookings', {
         method: 'POST',
-        body: { serviceTypeId: service._id, kind: 'instant', coordinates },
+        body: { serviceTypeId: service._id, kind: 'instant', coordinates, mechanicId: mechanicId || undefined },
       });
+      setPicking(null);
       router.push(`/customer/booking/${booking._id}`);
     } catch (err: any) {
       Alert.alert('Booking failed', err.message);
+    } finally {
+      setBookingBusy(false);
     }
   };
 
   if (loading) return <Loading />;
+
+  // Sorting reorders what the matcher already selected; it never changes who is
+  // eligible. An unrated mechanic sorts last rather than being hidden — a new
+  // joiner with no reviews is not the same as a bad one.
+  const sortedNearby =
+    sort === 'rating'
+      ? [...nearby].sort((a, b) => {
+          const ar = a.ratingCount > 0 ? a.rating : -1;
+          const br = b.ratingCount > 0 ? b.rating : -1;
+          return br - ar || a.distanceKm - b.distanceKm;
+        })
+      : nearby;
+
 
   const pins: MapPin[] = [
     ...(user?.location?.coordinates
@@ -260,7 +300,7 @@ export default function CustomerHome() {
       <Text style={styles.sectionHeading}>Book a service</Text>
       <View style={styles.grid}>
         {services.map((s) => (
-          <Pressable key={s._id} onPress={() => bookService(s)} style={styles.serviceCard}>
+          <Pressable key={s._id} onPress={() => startBooking(s)} style={styles.serviceCard}>
             <Text style={styles.serviceIcon}>{s.icon}</Text>
             <Text style={styles.serviceName}>{s.name}</Text>
             <Text style={styles.servicePrice}>{rupees(s.basePrice)}</Text>
@@ -320,11 +360,126 @@ export default function CustomerHome() {
         onPress={() => router.push('/customer/profile')}
         style={{ marginTop: 8 }}
       />
+      <Modal
+        visible={!!picking}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setPicking(null)}
+      >
+        <View style={styles.sheetRoot}>
+          <View style={styles.sheet}>
+            <Text style={styles.sheetTitle}>
+              {picking?.icon} {picking?.name}
+            </Text>
+            <Text style={styles.sheetSub}>Choose a mechanic, or let RideRescue pick the best match.</Text>
+
+            <View style={styles.sortRow}>
+              {(
+                [
+                  ['best', 'Best match'],
+                  ['rating', 'Top rated'],
+                ] as const
+              ).map(([value, label]) => (
+                <Pressable
+                  key={value}
+                  onPress={() => setSort(value)}
+                  style={[styles.sortChip, sort === value && styles.sortChipOn]}
+                >
+                  <Text style={[styles.sortChipText, sort === value && styles.sortChipTextOn]}>{label}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <ScrollView style={{ maxHeight: 320 }}>
+              <Pressable
+                onPress={() => setChosenMechanic('')}
+                style={[styles.pick, chosenMechanic === '' && styles.pickOn]}
+              >
+                <Text style={styles.pickName}>✨ Let RideRescue choose</Text>
+                <Text style={styles.pickMeta}>Ranked on distance, rating, experience and workload.</Text>
+              </Pressable>
+
+              {sortedNearby.map((m) => (
+                <Pressable
+                  key={m._id}
+                  onPress={() => setChosenMechanic(m._id)}
+                  style={[styles.pick, chosenMechanic === m._id && styles.pickOn]}
+                >
+                  <View style={styles.pickHead}>
+                    <Text style={styles.pickName}>{m.name}</Text>
+                    <Text style={styles.pickRating}>
+                      {m.ratingCount > 0 ? `${m.rating.toFixed(1)}★` : 'New'}
+                    </Text>
+                  </View>
+                  <Text style={styles.pickMeta}>
+                    {m.distanceKm} km · {m.experienceYears} yr experience
+                    {m.ratingCount > 0 ? ` · ${m.ratingCount} ratings` : ' · no ratings yet'}
+                  </Text>
+                </Pressable>
+              ))}
+
+              {sortedNearby.length === 0 && (
+                <Text style={styles.pickMeta}>
+                  No mechanics are online nearby. Book anyway and the job stays open for the next one.
+                </Text>
+              )}
+            </ScrollView>
+
+            <Button
+              label={picking ? `Book · ${rupees(picking.basePrice)}` : 'Book'}
+              loading={bookingBusy}
+              onPress={() => picking && bookService(picking, chosenMechanic)}
+              style={{ marginTop: 14 }}
+            />
+            <Button
+              label="Cancel"
+              variant="secondary"
+              onPress={() => setPicking(null)}
+              style={{ marginTop: 8 }}
+            />
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  sheetRoot: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(15,23,42,0.5)' },
+  sheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '88%',
+  },
+  sheetTitle: { fontSize: 19, fontWeight: '900', color: colors.text },
+  sheetSub: { fontSize: 13, color: colors.textMuted, marginTop: 4, marginBottom: 12 },
+  sortRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  sortChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: '#fff',
+  },
+  sortChipOn: { backgroundColor: colors.brandLight, borderColor: colors.brand },
+  sortChipText: { fontSize: 12.5, fontWeight: '700', color: colors.textMuted },
+  sortChipTextOn: { color: colors.brandDark },
+  pick: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    backgroundColor: '#fff',
+  },
+  pickOn: { borderColor: colors.brand, backgroundColor: colors.brandLight },
+  pickHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 },
+  pickName: { fontSize: 14.5, fontWeight: '800', color: colors.text },
+  pickRating: { fontSize: 13, fontWeight: '800', color: colors.text },
+  pickMeta: { fontSize: 12, color: colors.textMuted, marginTop: 3 },
   scroll: { padding: 16, paddingBottom: 40 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
   greeting: { fontSize: 20, fontWeight: '800', color: colors.text },

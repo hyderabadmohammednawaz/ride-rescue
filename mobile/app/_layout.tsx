@@ -25,6 +25,7 @@ export default function RootLayout() {
             <Stack.Screen name="login" options={{ headerShown: false }} />
             <Stack.Screen name="register" options={{ title: 'Create account' }} />
             <Stack.Screen name="verify-phone" options={{ title: 'Verify number' }} />
+            <Stack.Screen name="forgot-password" options={{ title: 'Reset password' }} />
             <Stack.Screen name="customer/index" options={{ title: 'RideRescue' }} />
             <Stack.Screen name="customer/booking/[id]" options={{ title: 'Track mechanic' }} />
             <Stack.Screen name="customer/bookings" options={{ title: 'My bookings' }} />
