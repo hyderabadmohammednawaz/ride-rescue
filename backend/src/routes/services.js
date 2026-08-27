@@ -34,9 +34,30 @@ router.get(
       favouriteIds: req.user.favouriteMechanics,
     });
 
+    /**
+     * `sort` reorders what the AI already selected; it never changes who is
+     * eligible. Choosing a mechanic for planned work is a different question
+     * from dispatching one to a breakdown — for a service next Tuesday the
+     * customer may quite reasonably want the best rated rather than the closest,
+     * and that is their call to make, not the matcher's.
+     *
+     * An unrated mechanic sorts last on rating rather than being hidden: a new
+     * joiner with no reviews yet is not the same as a bad one.
+     */
+    const sorted = [...ranked];
+    if (req.query.sort === 'rating') {
+      sorted.sort((a, b) => {
+        const ar = a.mechanic.mechanicProfile?.ratingCount > 0 ? a.mechanic.mechanicProfile.ratingAverage : -1;
+        const br = b.mechanic.mechanicProfile?.ratingCount > 0 ? b.mechanic.mechanicProfile.ratingAverage : -1;
+        return br - ar || b.score - a.score;
+      });
+    } else if (req.query.sort === 'distance') {
+      sorted.sort((a, b) => a.distanceKm - b.distanceKm);
+    }
+
     res.json({
       consideredCount,
-      mechanics: ranked.map((r) => ({
+      mechanics: sorted.map((r) => ({
         _id: r.mechanic._id,
         name: r.mechanic.name,
         phone: r.mechanic.phone,

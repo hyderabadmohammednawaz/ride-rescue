@@ -25,12 +25,15 @@ function BookInner() {
   const [address, setAddress] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  // Empty means "let the AI decide" — the existing behaviour, still the default.
+  const [mechanicId, setMechanicId] = useState('');
+  const [sort, setSort] = useState<'best' | 'rating'>('best');
 
   useEffect(() => {
     (async () => {
       const [s, n] = await Promise.all([
         api<{ services: ServiceType[] }>('/services'),
-        api<{ mechanics: NearbyMechanic[] }>('/services/mechanics/nearby?limit=5'),
+        api<{ mechanics: NearbyMechanic[] }>('/services/mechanics/nearby?limit=8'),
       ]);
       setServices(s.services);
       setNearby(n.mechanics);
@@ -48,6 +51,18 @@ function BookInner() {
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const service = services.find((s) => s._id === serviceId);
+
+  // Sorting only reorders what the matcher already selected; it never changes
+  // who is eligible. An unrated mechanic sorts last rather than being hidden —
+  // a new joiner with no reviews is not the same as a bad one.
+  const sortedNearby =
+    sort === 'rating'
+      ? [...nearby].sort((a, b) => {
+          const ar = a.ratingCount > 0 ? a.rating : -1;
+          const br = b.ratingCount > 0 ? b.rating : -1;
+          return br - ar || a.distanceKm - b.distanceKm;
+        })
+      : nearby;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +92,7 @@ function BookInner() {
           address,
           coordinates,
           scheduledFor: kind === 'scheduled' ? scheduledFor : undefined,
+          mechanicId: mechanicId || undefined,
         },
       });
 
@@ -190,6 +206,87 @@ function BookInner() {
                 className="input mt-2"
               />
             )}
+          </div>
+
+          {/* Choosing a mechanic is offered for planned work only. An SOS never
+              reaches this page — it dispatches the nearest available mechanic
+              from the home screen, which is the right answer when stranded. */}
+          <div>
+            <div className="flex items-end justify-between">
+              <label className="label">Mechanic</label>
+              <div className="mb-1.5 flex gap-1 text-xs">
+                {(
+                  [
+                    ['best', 'Best match'],
+                    ['rating', 'Top rated'],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setSort(value)}
+                    className={`rounded-lg px-2 py-1 font-semibold transition ${
+                      sort === value
+                        ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300'
+                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setMechanicId('')}
+                className={`w-full rounded-xl border px-3 py-2.5 text-left transition ${
+                  mechanicId === ''
+                    ? 'border-brand-500 bg-brand-50 dark:border-brand-500 dark:bg-brand-500/10'
+                    : 'border-slate-200 hover:border-slate-300 dark:border-slate-700'
+                }`}
+              >
+                <p className="text-sm font-semibold">✨ Let RideRescue choose</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Ranked on distance, rating, experience and current workload.
+                </p>
+              </button>
+
+              {sortedNearby.map((m) => (
+                <button
+                  key={m._id}
+                  type="button"
+                  onClick={() => setMechanicId(m._id)}
+                  className={`w-full rounded-xl border px-3 py-2.5 text-left transition ${
+                    mechanicId === m._id
+                      ? 'border-brand-500 bg-brand-50 dark:border-brand-500 dark:bg-brand-500/10'
+                      : 'border-slate-200 hover:border-slate-300 dark:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="text-sm font-semibold">
+                      {m.name}
+                      {m.isFavourite && <span className="ml-1 text-amber-500">★</span>}
+                    </p>
+                    <p className="text-xs font-semibold">
+                      {m.ratingCount > 0 ? `${m.rating.toFixed(1)}★` : 'New'}
+                    </p>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {m.distanceKm} km · {m.experienceYears} yr experience
+                    {m.ratingCount > 0 ? ` · ${m.ratingCount} ratings` : ' · no ratings yet'}
+                  </p>
+                </button>
+              ))}
+
+              {sortedNearby.length === 0 && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  No mechanics are online nearby right now. Book anyway and the job stays open for
+                  the next one who comes on.
+                </p>
+              )}
+            </div>
           </div>
 
           <div>

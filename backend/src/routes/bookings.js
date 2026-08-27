@@ -94,7 +94,17 @@ router.post(
   '/',
   requireRole('customer'),
   asyncRoute(async (req, res) => {
-    const { serviceTypeId, kind = 'instant', description, scheduledFor, coordinates, address, vehicleId, autoAssign = true } = req.body;
+    const {
+      serviceTypeId,
+      kind = 'instant',
+      description,
+      scheduledFor,
+      coordinates,
+      address,
+      vehicleId,
+      autoAssign = true,
+      mechanicId,
+    } = req.body;
 
     const point = coordinates || req.user.location?.coordinates;
     if (!Array.isArray(point) || point.length !== 2) throw badRequest('Your location is required to book');
@@ -134,21 +144,49 @@ router.post(
       radiusKm: kind === 'sos' ? 25 : 20,
       favouriteIds: req.user.favouriteMechanics,
       vehicleMake: vehicle.make,
-      limit: 5,
+      // Only the top match matters when assigning automatically, but a chosen
+      // mechanic can sit anywhere in the ranking — a highly rated one further
+      // away scores below a closer average one. Widen the list so the customer's
+      // pick is actually found rather than reported unavailable.
+      limit: mechanicId && kind !== 'sos' ? 30 : 5,
     });
 
-    if (ranked.length > 0) {
-      const best = ranked[0];
-      booking.recommendation = { score: best.score, reasons: best.reasons, consideredCount };
-      booking.distanceKm = best.distanceKm;
-      booking.etaMinutes = best.etaMinutes;
+    /**
+     * A customer may name the mechanic they want — someone they have used before,
+     * or the best rated in the list — but only for planned work. An SOS ignores
+     * the choice entirely: when you are stranded the nearest mechanic is the
+     * right answer, and letting someone pick a five-star mechanic forty minutes
+     * away would make the emergency feature worse while looking like a feature.
+     */
+    const chosen =
+      mechanicId && kind !== 'sos' ? ranked.find((r) => String(r.mechanic._id) === String(mechanicId)) : null;
 
-      if (autoAssign && kind !== 'scheduled') {
-        booking.mechanic = best.mechanic._id;
-        pushStatus(booking, 'accepted', `Auto-assigned by AI match (score ${best.score})`);
+    if (mechanicId && kind !== 'sos' && !chosen) {
+      // Not in range, offline or blocked — say so rather than silently
+      // assigning someone else, which is the sort of substitution a customer
+      // would only discover when a stranger turned up.
+      throw badRequest('That mechanic is no longer available. Pick another from the list.');
+    }
+
+    const picked = chosen || ranked[0];
+
+    if (picked) {
+      booking.recommendation = { score: picked.score, reasons: picked.reasons, consideredCount };
+      booking.distanceKm = picked.distanceKm;
+      booking.etaMinutes = picked.etaMinutes;
+
+      if ((autoAssign || chosen) && kind !== 'scheduled') {
+        booking.mechanic = picked.mechanic._id;
+        pushStatus(
+          booking,
+          'accepted',
+          chosen
+            ? `Chosen by the customer (rated ${(picked.mechanic.mechanicProfile?.ratingAverage || 0).toFixed(1)}★)`
+            : `Auto-assigned by AI match (score ${picked.score})`
+        );
         booking.mechanicLocation = {
           type: 'Point',
-          coordinates: best.mechanic.location.coordinates,
+          coordinates: picked.mechanic.location.coordinates,
           updatedAt: new Date(),
         };
       }
